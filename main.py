@@ -7,15 +7,14 @@ import torch.nn.functional as F
 import numpy as np
 import importlib
 
-from config import Config
-from model.train import train
-from model.test import test
-from model.util import load_hrtf
-from preprocessing.hrtf_sphere import HRTF_Sphere
-from preprocessing.utils import convert_to_sofa
+from configs.config import Config
+from trainer.train import train_model
+# from trainer.test import test
+from trainer.utils import load_hrtf
+from data.preprocessing.utils import convert_to_sofa
 
-from baselines.barycentric_interpolation import run_barycentric_interpolation
-from baselines.hrtf_selection import run_hrtf_selection
+# from baselines.barycentric_interpolation import run_barycentric_interpolation
+# from baselines.hrtf_selection import run_hrtf_selection
 from evaluation.evaluation import run_lsd_evaluation, run_localisation_evaluation
 
 import shutil
@@ -26,13 +25,13 @@ import matplotlib.pyplot as plt
 torch.manual_seed(0)
 np.random.seed(0)
 
-def main(config, mode):
+def main(config: Config, mode):
     # Initialize Config
     data_dir = config.raw_hrtf_dir / config.dataset
     print(os.getcwd())
     print(config.dataset)
 
-    imp = importlib.import_module('hrtfdata.full')
+    imp = importlib.import_module('data.hrtfdata.full')
     load_function = getattr(imp, config.dataset)
 
     if mode == 'preprocess':
@@ -96,40 +95,8 @@ def main(config, mode):
 
     elif mode == 'train':
         print("using cuda? ", torch.cuda.is_available())
-        batch_size, lr_G, lr_D, latent_dim, critic_iters, max_degree = config.get_train_params()
-
-        # create path
-        path = f'{config.path}/{config.upscale_factor}'
-        shutil.rmtree(Path(path), ignore_errors=True)
-        Path(path).mkdir(parents=True, exist_ok=True)
-        
-        with open(f"{config.path}/{config.upscale_factor}/log.txt", "a") as f:
-            f.write(f"batch size: {batch_size}\n")
-            f.write(f"generator lr: {lr_G}\n")
-            f.write(f"discriminator lr: {lr_D}\n")
-            f.write(f"latent_dim: {latent_dim}\n")
-            f.write(f"critic iters: {critic_iters}\n")
-            f.write(f"max degree:  {max_degree}\n")
-        if config.transform_flag:
-            mean_std_dir = config.mean_std_coef_dir
-            mean_std_full = mean_std_dir + "/mean_std_full.pickle"
-            with open(mean_std_full, "rb") as f:
-                mean_full, std_full = pickle.load(f)
-            
-            mean_std_lr = mean_std_dir + f"/mean_std_{config.upscale_factor}.pickle"
-            with open(mean_std_lr, "rb") as f:
-                mean_lr, std_lr = pickle.load(f)
-            mean = (mean_lr, mean_full)
-            std = (std_lr, std_full)
-            train_prefetcher, _ = load_hrtf(config, mean, std)
-        else:
-            train_prefetcher, _ = load_hrtf(config)
-        train_prefetcher, _ = load_hrtf(config)
-        print("transform applied? ", config.transform_flag)
-        print("train fetcher: ", len(train_prefetcher))
-
         # Trains the model, according to the parameters specified in Config
-        train(config, train_prefetcher)
+        train_model(config)
     
     elif mode == 'test':
         print("using cuda? ", torch.cuda.is_available())
