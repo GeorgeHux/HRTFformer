@@ -32,8 +32,8 @@ class Config:
 
         # Data dirs
         if remote:
-            self.data_dir_path = '/vol/bitbucket/jl2622/SHT-HRTF'
-            self.raw_hrtf_dir = Path('/vol/bitbucket/jl2622')
+            self.data_dir_path = Path('C:\Users\steph\Desktop\Xuyi Hu\output')
+            self.raw_hrtf_dir = Path('C:\Users\steph\Desktop\Xuyi Hu')
         else:
             self.data_dir_path = '/Users/lijian/Downloads/shtHRTF'
             self.raw_hrtf_dir = Path('/Users/lijian/Downloads')
@@ -71,8 +71,8 @@ class Config:
         # model parameters
         self.lr_pad_idx=0
         self.hidden_size = 4096
-        self.num_encoder_transformer_layers = 2
-        self.num_decoder_transformer_layers = 3
+        self.num_encoder_transformer_layers = 3
+        self.num_decoder_transformer_layers = 4
         self.num_heads = 32
         self.num_groups = 8
         self.dropout = 0

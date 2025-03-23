@@ -9,7 +9,7 @@ import importlib
 
 from configs.config import Config
 from trainer.train import train_model
-# from trainer.test import test
+from trainer.test import test
 from trainer.utils import load_hrtf
 from data.preprocessing.utils import convert_to_sofa
 
@@ -100,26 +100,9 @@ def main(config: Config, mode):
     
     elif mode == 'test':
         print("using cuda? ", torch.cuda.is_available())
-        with open(f"{config.path}/{config.upscale_factor}/test_log.txt", "a") as f:
-            f.write(f"upscale factor: {config.upscale_factor}\n")
-        if config.transform_flag:
-            mean_std_dir = config.mean_std_coef_dir
-            mean_std_full = mean_std_dir + "/mean_std_full.pickle"
-            with open(mean_std_full, "rb") as f:
-                mean_full, std_full = pickle.load(f)
-            
-            mean_std_lr = mean_std_dir + f"/mean_std_{config.upscale_factor}.pickle"
-            with open(mean_std_lr, "rb") as f:
-                mean_lr, std_lr = pickle.load(f)
-            mean = (mean_lr, mean_full)
-            std = (std_lr, std_full)
-            _, test_prefetcher = load_hrtf(config, mean, std)
-        else:
-            _, test_prefetcher = load_hrtf(config)
-        print("Loaded all datasets successfully.")
-
-        test(config, test_prefetcher)
-        sr_dir = config.valid_recon_path + f'/{config.upscale_factor}/mag'
+        checkpoint_path = None
+        test(config, checkpoint_path)
+        sr_dir = checkpoint_path + '/mag'
         run_lsd_evaluation(config, sr_dir)
         run_localisation_evaluation(config, sr_dir)
 
