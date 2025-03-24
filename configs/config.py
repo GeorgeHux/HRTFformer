@@ -32,8 +32,8 @@ class Config:
 
         # Data dirs
         if remote:
-            self.data_dir_path = Path('C:\Users\steph\Desktop\Xuyi Hu\output')
-            self.raw_hrtf_dir = Path('C:\Users\steph\Desktop\Xuyi Hu')
+            self.data_dir_path = 'C:/Users/steph/Desktop/XuyiHu/output'
+            self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu')
         else:
             self.data_dir_path = '/Users/lijian/Downloads/shtHRTF'
             self.raw_hrtf_dir = Path('/Users/lijian/Downloads')
@@ -63,7 +63,7 @@ class Config:
         self.num_workers = 1
         self.num_initial_points = 27
         self.optimizer = 'adam'
-        self.num_epochs = 3  # was originally 250
+        self.num_epochs = 200  # was originally 250
         self.lr = 0.002
         self.latent_dim = 128
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
