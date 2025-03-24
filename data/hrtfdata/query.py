@@ -103,12 +103,13 @@ class DataQuery:
         ids = sorted(set.intersection(*separate_ids))
         if include_subjects is None:
             return ids
-        if len(ids) > 0 and include_subjects == 'first':
-            return [ids[0]]
-        if len(ids) > 0 and include_subjects == 'last':
-            return [ids[-1]]
-        if len(ids) > 0 and include_subjects == 'random':
-            return [random.choice(ids)]
+        if len(ids) > 0:
+            if isinstance(include_subjects, (str, np.str_)) and include_subjects == 'first':
+                return [ids[0]]
+            if isinstance(include_subjects, (str, np.str_)) and include_subjects == 'last':
+                return [ids[-1]]
+            if isinstance(include_subjects, (str, np.str_)) and include_subjects == 'random':
+                return [random.choice(ids)]
         return [(i, s) for i, s in ids if i in include_subjects]
 
 
