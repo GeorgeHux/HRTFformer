@@ -100,7 +100,6 @@ class DataQuery:
             side = specification['hrirs'].get('side')
             exclude = specification['hrirs'].get('exclude', exclude_subjects)
             separate_ids.append(set(self.hrir_ids(side, exclude)))
-
         ids = sorted(set.intersection(*separate_ids))
         if include_subjects is None:
             return ids
@@ -379,4 +378,24 @@ class SonicomDataQuery(DataQuery):
 
 
     def _all_hrir_ids(self, side):
-        return sorted([int(x.stem.split('_')[0].lstrip('P')) for x in self.sofa_directory_path.glob(f'P????/HRTF/{self._samplerate_str}/P????_{self._hrtf_type_str}_{self._samplerate_str}.sofa')])
+        # possible paths
+        patterns = [
+            f"P???/HRTF/{self._samplerate_str}/P???_{self._hrtf_type_str}_{self._samplerate_str}.sofa",
+            f"P???/HRTF/HRTF/{self._samplerate_str}/P???_{self._hrtf_type_str}_{self._samplerate_str}.sofa"
+        ]
+
+        # collect all matched sofa files:
+        sofa_files = []
+        for pattern in patterns:
+            sofa_files.extend(list(self.sofa_directory_path.glob(pattern)))
+        
+        # get ids and remove duplicate (not likely....but for safe)
+        subject_ids = set()
+        for x in sofa_files:
+            try:
+                subject_id = int(x.stem.split('_')[0].lstrip('P'))
+                subject_ids.add(subject_id)
+            except (ValueError, IndexError):
+                continue
+        return sorted(subject_ids)
+        # return sorted([int(x.stem.split('_')[0].lstrip('P')) for x in self.sofa_directory_path.glob(f'P????/HRTF/{self._samplerate_str}/P????_{self._hrtf_type_str}_{self._samplerate_str}.sofa')])
