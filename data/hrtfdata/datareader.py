@@ -719,4 +719,16 @@ class SonicomDataReader(SofaSphericalDataReader):
 
 
     def _sofa_path(self, subject_id):
-        return str(self.query.sofa_directory_path / f'P{subject_id:04d}/HRTF/{self.query._samplerate_str}/P{subject_id:04d}_{self.query._hrtf_type_str}_{self.query._samplerate_str}.sofa')
+        base_path = self.query.sofa_directory_path / f'P{subject_id:04d}'
+        file_name = f'P{subject_id:04d}_{self.query._hrtf_type_str}_{self.query._samplerate_str}.sofa'
+
+        # two possible paths (old and new version)
+        path1 = base_path / 'HRTF' / self.query._samplerate_str / file_name
+        if path1.exists():
+            return str(path1)
+        
+        path2 = base_path / 'HRTF' / 'HRTF' / self.query._samplerate_str / file_name
+        if path2.exists():
+            return str(path2)
+        # return str(self.query.sofa_directory_path / f'P{subject_id:04d}/HRTF/{self.query._samplerate_str}/P{subject_id:04d}_{self.query._hrtf_type_str}_{self.query._samplerate_str}.sofa')
+        raise FileNotFoundError(f"SOFA file not found at {path1} or {path2}")
