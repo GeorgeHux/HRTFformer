@@ -101,7 +101,6 @@ class DataQuery:
             exclude = specification['hrirs'].get('exclude', exclude_subjects)
             separate_ids.append(set(self.hrir_ids(side, exclude)))
         ids = sorted(set.intersection(*separate_ids))
-        print("debug---lj ", len(ids))
         if include_subjects is None:
             return ids
         if len(ids) > 0 and include_subjects == 'first':
@@ -398,6 +397,5 @@ class SonicomDataQuery(DataQuery):
                 subject_ids.add(subject_id)
             except (ValueError, IndexError):
                 continue
-        print(f"debug subject ids: {len(subject_ids)}")
         return sorted(subject_ids)
         # return sorted([int(x.stem.split('_')[0].lstrip('P')) for x in self.sofa_directory_path.glob(f'P????/HRTF/{self._samplerate_str}/P????_{self._hrtf_type_str}_{self._samplerate_str}.sofa')])
