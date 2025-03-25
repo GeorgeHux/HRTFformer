@@ -1,5 +1,7 @@
 import argparse
 import os
+# temporary fix for remote env
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import pickle
 import torch
 import torch.nn as nn
