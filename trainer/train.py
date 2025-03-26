@@ -166,6 +166,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
 
             # optimizer
             optimizer.step()
+            optimizer.zero_grad()
 
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
