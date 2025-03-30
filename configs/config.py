@@ -65,11 +65,11 @@ class Config:
         self.optimizer = 'adam'
         self.num_epochs = 100  # was originally 250
         self.lr = 1e-4
-        self.latent_dim = 128
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = True
 
         # model parameters
+        self.latent_dim = 128
         self.lr_pad_idx=0
         self.hidden_size = 4096
         self.num_encoder_transformer_layers = 4
@@ -103,4 +103,4 @@ class Config:
         self.raw_hrtf_dir = Path(self.raw_hrtf_dir)
 
     def get_train_params(self):
-        return self.batch_size, self.lr_G, self.lr_D, self.latent_dim, self.critic_iters, self.max_degree
+        return self.batch_size, self.latent_dim, self.max_degree
