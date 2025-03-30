@@ -1,9 +1,7 @@
 import torch
-import os
-import shutil
-from pathlib import Path
 import numpy as np
 import pickle
+import math
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -44,17 +42,18 @@ def load_hrtf(config: Config, mean=None, std=None):
 
     domain = config.domain
     max_degree = config.max_degree
+    apply_sht = config.apply_sht
 
     left_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}},
-                                   subject_ids=train_ids)
+                               subject_ids=train_ids)
     right_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}},
                                 subject_ids=train_ids)
     left_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}},
-                                subject_ids=val_ids)
+                             subject_ids=val_ids)
     right_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}},
-                                subject_ids=val_ids)
-    train_dataset = MergeHRTFDataset(left_train, right_train, config.num_initial_points, max_degree=max_degree, transform=transform)
-    val_dataset = MergeHRTFDataset(left_val, right_val, config.num_initial_points, max_degree=max_degree, transform=transform)
+                              subject_ids=val_ids)
+    train_dataset = MergeHRTFDataset(left_train, right_train, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
+    val_dataset = MergeHRTFDataset(left_val, right_val, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=config.batch_size,
@@ -294,3 +293,7 @@ def plot_test_sample_hrtf(ir_id, ori_hrtf, recon_hrtf, is_min=True):
     # plt.show()
     plt.savefig(f"tf_{title}_{ir_id}.png")
     plt.close()
+
+def convert_num_points_to_num_coeff(num_points):
+    # minimum coefficients is set to 4
+    return max(4, math.floor(math.sqrt(num_points)) ** 2)

@@ -67,6 +67,7 @@ class Config:
         self.lr = 0.002
         self.latent_dim = 128
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
+        self.apply_sht = True
 
         # model parameters
         self.lr_pad_idx=0

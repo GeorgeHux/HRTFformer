@@ -20,26 +20,29 @@ from model.model import HRTF_Transformer
 def get_model_and_optimizer(config: Config):
     ngpu = config.ngpu
     device = torch.device(config.device_name if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-    
+
     nbins = config.nbins_hrtf * 2 # left and right
     max_num_coeffs = (config.max_degree + 1) ** 2
-    encoder_config = ModelConfig(in_channels=nbins,
+    num_initial_coeff = convert_num_points_to_num_coeff(config.num_initial_points)
+    encoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
                                  num_transformer_layers=config.num_encoder_transformer_layers,
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 num_initial_coeff=config.num_initial_points,
-                                 max_num_coeff=max_num_coeffs)
+                                 num_initial_coeff=num_initial_coeff,
+                                 max_num_coeff=max_num_coeffs,
+                                 latent_dim=config.latent_dim)
     
-    decoder_config = ModelConfig(in_channels=2048,
+    decoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
                                  num_transformer_layers=config.num_decoder_transformer_layers,
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
                                  num_initial_coeff=config.num_initial_points,
-                                 max_num_coeff=max_num_coeffs)
+                                 max_num_coeff=max_num_coeffs,
+                                 latent_dim=config.latent_dim)
     
     # model initialization
     hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)

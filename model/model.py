@@ -1,17 +1,14 @@
-import sys
-import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 import torch.nn as nn
+import math
 from .transformer import Encoder as TransformerLayer
 from configs.model_config import ModelConfig
 
 num_initial_coeff_to_stides_map = {
-    27: [2, 2, 2],
-    18: [2, 2, 1],
-    8: [2, 1, 1],
-    5: [2, 1, 1],
-    3: [2, 1, 1]
+    25: [2, 2, 2],
+    16: [2, 2, 1],
+    9: [2, 1, 1],
+    4: [1, 1, 1],
 }
 
 class Trim(nn.Module):
@@ -37,18 +34,20 @@ class DownsampleLayer(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Encoder, self).__init__()
+        assert model_config.num_initial_coeff in num_initial_coeff_to_stides_map, f"invalid num_initial_coeff, should be one of {num_initial_coeff_to_stides_map.keys()}"
+
         # strides for downsampling layers
-        strides = num_initial_coeff_to_stides_map[model_config.num_initial_coeff]
-        in_channels = model_config.in_channels
+        self.strides = num_initial_coeff_to_stides_map[model_config.num_initial_coeff]
+        in_channels = model_config.nbins
         # each layer of Encoder model is constructed by a transformer layer followed by a downsampling layer
         # except the last layer, which is only a transformer layer without downsampling
         # for example, if total number encoding layer is 5, the structure is as:
         # [Transofrmer, downsampling, transformer, downsampling, transformer, downsampling, transformer]
         # strides only indicate the stride used in each downsampling layer
         # therefore the total number of encoding layer is len(strides) + 1
-        num_encoding_layer = len(strides) + 1
+        num_encoding_layer = len(self.strides) + 1
         self.layers = nn.ModuleList()
-        for i in range(len(strides) + 1):
+        for i in range(len(self.strides) + 1):
             self.layers.append(TransformerLayer(emb_size=in_channels,
                                                 hidden_size=model_config.hidden_size,
                                                 num_layers=model_config.num_transformer_layers,
@@ -59,15 +58,36 @@ class Encoder(nn.Module):
             # no downsampling for last layer
             if i < num_encoding_layer - 1:
                 self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=in_channels*2,
-                                                   stride=strides[i])) # downsamply by 2 if stride=2
+                                                   stride=self.strides[i])) # downsamply by 2 if stride=2
             in_channels *= 2
-    
+        
+        output_size = self._get_output_dim(model_config.num_initial_coeff)
+        self.fc = nn.Sequential(nn.Linear(output_size * in_channels // 2, 1024),
+                                nn.BatchNorm1d(1024),
+                                nn.PReLU(),
+                                nn.Linear(1024, model_config.latent_dim))
+        self.latent_conv = nn.Sequential(
+            nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(1024),
+            nn.PReLU(),
+            nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
+        )
+
+    def _get_output_dim(self, num_coeff):
+        size = num_coeff
+        # configuration for convolution layer
+        kernel_size = 3
+        padding = 1
+        # compute the output shape
+        for s in self.strides:
+            size = (size + 2 * padding - kernel_size) // s + 1
+        return size
+
     def forward(self, x):
-        # print(f"num layers: {len(self.layers)}")
         for layer in self.layers:
-            # print(layer.__class__.__name__)
             x = layer(x)
-            # print(x.shape)
+        x = x.permute(0, 2, 1)
+        x = self.latent_conv(x)
         return x
 
 class UpsampleLayer(nn.Module):
@@ -85,8 +105,9 @@ class UpsampleLayer(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Decoder, self).__init__()
-        # upsample from 4 -> 512 (x2), then trim to 484
-        in_channels = model_config.in_channels
+        # upsample from 4 -> 512 (x2 ** 7), then trim to 484
+        in_channels = 1024
+        self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)
         self.layers = nn.ModuleList()
         # 4->8->16->32->64->128->256->512
         num_layers = 8
@@ -106,11 +127,10 @@ class Decoder(nn.Module):
                 self.layers.append(Trim(model_config.max_num_coeff))
     
     def forward(self, x):
-        # print(f"num decoder layers: {len(self.layers)}")
+        x = self.conv0(x)
+        x = x.permute(0, 2, 1)
         for layer in self.layers:
-            # print(layer.__class__.__name__)
             x = layer(x)
-            # print(x.shape)
         return x
 
 class HRTF_Transformer(nn.Module):
