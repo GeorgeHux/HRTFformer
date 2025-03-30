@@ -63,8 +63,8 @@ class Config:
         self.num_workers = 1
         self.num_initial_points = 27
         self.optimizer = 'adam'
-        self.num_epochs = 200  # was originally 250
-        self.lr = 0.002
+        self.num_epochs = 100  # was originally 250
+        self.lr = 1e-4
         self.latent_dim = 128
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = True
@@ -72,8 +72,8 @@ class Config:
         # model parameters
         self.lr_pad_idx=0
         self.hidden_size = 4096
-        self.num_encoder_transformer_layers = 3
-        self.num_decoder_transformer_layers = 4
+        self.num_encoder_transformer_layers = 4
+        self.num_decoder_transformer_layers = 5
         self.num_heads = 32
         self.num_groups = 8
         self.dropout = 0
