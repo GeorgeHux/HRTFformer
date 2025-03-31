@@ -104,7 +104,7 @@ def test(config: Config, checkpoint_path):
                                                          non_blocking=True, dtype=torch.float)
         hrtf = batch_data["hrtf"]
         mask = batch_data["mask"]
-        sample_id = batch_data["id"]
+        sample_id = batch_data["id"].item()
 
         # upsample lr coefficient
         with torch.no_grad():
