@@ -18,7 +18,7 @@ from configs.model_config import  ModelConfig
 def test(config: Config, checkpoint_path):
     domain = config.domain
 
-    if config.transform_flag:
+    if config.normalize_input:
         mean_std_dir = config.mean_std_coef_dir
         mean_std_full = mean_std_dir + "/mean_std_full.pickle"
         with open(mean_std_full, "rb") as f:
@@ -43,24 +43,27 @@ def test(config: Config, checkpoint_path):
     os.makedirs(recon_db_dir, exist_ok=True)
 
     nbins = config.nbins_hrtf * 2
+    num_initial_coeff = convert_num_points_to_num_coeff(config.num_initial_points)
     max_num_coeffs = (config.max_degree + 1) ** 2
-    encoder_config = ModelConfig(in_channels=nbins,
+    encoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
                                  num_transformer_layers=config.num_encoder_transformer_layers,
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 num_initial_coeff=config.num_initial_points,
-                                 max_num_coeff=max_num_coeffs)
+                                 num_initial_coeff=num_initial_coeff,
+                                 max_num_coeff=max_num_coeffs,
+                                 latent_dim=config.latent_dim)
     
-    decoder_config = ModelConfig(in_channels=2048,
+    decoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
                                  num_transformer_layers=config.num_decoder_transformer_layers,
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 num_initial_coeff=config.num_initial_points,
-                                 max_num_coeff=max_num_coeffs)
+                                 num_initial_coeff=num_initial_coeff,
+                                 max_num_coeff=max_num_coeffs,
+                                 latent_dim=config.latent_dim)
     # model initialization
     model = HRTF_Transformer(encoder_config, decoder_config).to(device)
     print("Build hrtf transformer model successfully.")
@@ -71,6 +74,7 @@ def test(config: Config, checkpoint_path):
     param_size = 0
     for param in model.parameters():
         param_size += param.nelement() * param.element_size()
+    buffer_size = 0
     for buffer in model.buffers():
         buffer_size += buffer.nelement() * buffer.element_size()
 
@@ -145,7 +149,7 @@ def test(config: Config, checkpoint_path):
 
             if max_value is None or np.sqrt(average_over_frequencies) > max_value:
                 max_value = np.sqrt(average_over_frequencies)
-                max_ir = ir_id
+                max_id = ir_id
             if min_value is None or np.sqrt(average_over_frequencies) < min_value:
                 min_value = np.sqrt(average_over_frequencies)
                 min_id = ir_id
