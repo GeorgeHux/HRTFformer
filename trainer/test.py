@@ -68,7 +68,7 @@ def test(config: Config, checkpoint_path):
     model = HRTF_Transformer(encoder_config, decoder_config).to(device)
     print("Build hrtf transformer model successfully.")
     checkpoint = checkpoint_path + '/transformer.pt'
-    model.load_state_dict(checkpoint, map_location=torch.device('cpu'))
+    model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
     print(f"Load hrtf transformer model weights '{checkpoint_path} successfully.'")
 
     param_size = 0
