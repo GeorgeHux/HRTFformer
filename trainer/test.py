@@ -135,7 +135,7 @@ def test(config: Config, checkpoint_path):
                 original = 10 ** (original / 20)
                 generated = 10 ** (generated / 20)
 
-            if domain == "megnitude_db" or domain == "magnitude":
+            if domain == "magnitude_db" or domain == "magnitude":
                 average_over_frequencies = spectral_distortion_inner(abs(generated), abs(original))
             elif domain == "time":
                 nbins = config.nbins_hrtf
@@ -148,6 +148,8 @@ def test(config: Config, checkpoint_path):
                 gen_tf = np.ma.concatenate([gen_tf_left, gen_tf_right])
 
                 average_over_frequencies = spectral_distortion_inner(gen_tf, ori_tf)
+            else:
+                raise ValueError(f"Domain '{domain}' is not recognized. Expected 'magnitude_db', 'magnitude', or 'time'.")
             total_all_position += np.sqrt(average_over_frequencies)
 
             if max_value is None or np.sqrt(average_over_frequencies) > max_value:
