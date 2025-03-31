@@ -30,7 +30,7 @@ def test(config: Config, checkpoint_path):
         mean = (mean_lr, mean_full)
         std = (std_lr, std_full)
     else:
-        mean, std = None
+        mean, std = None, None
     _, test_prefetcher = load_hrtf(config, mean, std)
     print("test set loadded successfully")
 
