@@ -102,30 +102,32 @@ def test(config: Config, checkpoint_path):
         print(f"test {count + 1} / {len(test_prefetcher)}")
         lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
                                                          non_blocking=True, dtype=torch.float)
-        hrtf = batch_data["hrtf"]
+        hrtf = batch_data["hrtf"].detach().cpu()
         mask = batch_data["mask"]
         sample_id = batch_data["id"].item()
 
         # upsample lr coefficient
         with torch.no_grad():
             sr = model(lr_coefficient)
-        recon = inverse_sht(config, sr, mask)[0]
+        recon = inverse_sht(config, sr, mask)[0].detach().cpu()
 
         # save reconstructed hrtfs into pickle files
         file_name = '/' + f"{config.dataset}_{sample_id}.pickle"
         with open(recon_db_dir + file_name, "wb") as file:
-            pickle.dump(recon, file)
+            recon_db = recon.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
+            pickle.dump(recon_db, file)
         with open(recon_mag_dir + file_name, "wb") as file:
-            recon = 10 ** (recon / 20)
-            pickle.dump(recon, file)
+            recon_mag = 10 ** (recon / 20)
+            recon_mag = recon_mag.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
+            pickle.dump(recon_mag, file)
 
         ir_id = 0
         max_value = None
         max_id = None
         min_value = None
         min_id = None
-        recon = recon.view(nbins, -1).T.detach().cpu()
-        original_hrtf = hrtf[0].view(nbins, -1).T.detach().cpu()
+        recon = recon.view(nbins, -1).T
+        original_hrtf = hrtf[0].view(nbins, -1).T
         total_all_position = 0
         total_positions = len(recon)
         total_sd_metric = 0
