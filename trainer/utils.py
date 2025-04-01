@@ -278,7 +278,7 @@ def plot_losses(losses, labels, colors, path, filename, title="Loss Curves"):
     plt.savefig(f'{path}/{filename}.png')
     plt.close()
 
-def plot_test_sample_hrtf(ir_id, ori_hrtf, recon_hrtf, is_min=True):
+def plot_test_sample_hrtf(path, ir_id, ori_hrtf, recon_hrtf, is_min=True):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
     if is_min:
@@ -291,7 +291,7 @@ def plot_test_sample_hrtf(ir_id, ori_hrtf, recon_hrtf, is_min=True):
     ax2.set_title(f'{title} recon (ID {ir_id})')
 
     # plt.show()
-    plt.savefig(f"tf_{title}_{ir_id}.png")
+    plt.savefig(f"{path}/tf_{title}_{ir_id}.png")
     plt.close()
 
 def convert_num_points_to_num_coeff(num_points):

@@ -166,8 +166,9 @@ def test(config: Config, checkpoint_path):
         print("Log SD (across all positions: ", float(sd_metric))
 
         if plot_min_max_diff:
-            plot_test_sample_hrtf(min_id, original_hrtf, recon, is_min=True)
-            plot_test_sample_hrtf(max_id, original_hrtf, recon, is_min=False)
+            plot_test_sample_hrtf(checkpoint_path, min_id, original_hrtf, recon, is_min=True)
+            plot_test_sample_hrtf(checkpoint_path, max_id, original_hrtf, recon, is_min=False)
+            plot_min_max_diff = False
 
         # Preload the next batch of data
         batch_data = test_prefetcher.next()

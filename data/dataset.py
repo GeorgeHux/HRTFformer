@@ -89,7 +89,7 @@ class MergeHRTFDataset(Dataset):
             selected_rows = [coord[0] for coord in self.selected_coords]
             selected_cols = [coord[1] for coord in self.selected_coords]
             lr_hrtf = merge[:, :, selected_rows, selected_cols]
-            return {"lr_hrtf": {lr_hrtf}, "hr_hrtf": {merge}}
+            return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}
     
     def __len__(self):
         return len(self.left_hrtf)
@@ -142,7 +142,7 @@ class CUDAPrefetcher:
 
         with torch.cuda.stream(self.stream):
             for k, v in self.batch_data.items():
-                if torch.is_tensor(v) and k != 'mask' and k != 'id':
+                if torch.is_tensor(v) and k not in {'mask', 'id'}:
                     self.batch_data[k] = self.batch_data[k].to(self.device, non_blocking=True)
 
     def next(self):
