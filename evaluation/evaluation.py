@@ -1,5 +1,6 @@
 from trainer.utils import spectral_distortion_metric
 from data.preprocessing.utils import convert_to_sofa
+from configs.config import Config
 
 import shutil
 from pathlib import Path
@@ -15,14 +16,14 @@ import numpy as np
 from data.dataset import get_sample_coords
 from data.utils import get_dataset_info
 
-def replace_nodes(config, sr_dir, file_name):
+def replace_nodes(config: Config, sr_dir, file_name):
     with open(config.valid_target_path + file_name, "rb") as f:
         hr_hrtf = pickle.load(f).permute(1, 2, 0, 3)  # r x w x h x nbins -> w x h x r x nbins
 
     with open(sr_dir + file_name, "rb") as f:
         sr_hrtf = pickle.load(f)   # w x h x r x nbins
 
-    selected_coords = get_sample_coords(config.upscale_factor)
+    selected_coords = get_sample_coords(config.num_initial_points)
     for coord in selected_coords:
         sr_hrtf[coord[0], coord[1], :] = hr_hrtf[coord[0], coord[1], :]
 
@@ -31,7 +32,7 @@ def replace_nodes(config, sr_dir, file_name):
 
     return target, generated
 
-def run_lsd_evaluation(config, sr_dir, file_ext=None, hrtf_selection=None):
+def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
     file_ext = 'lsd_errors.pickle' if file_ext is None else file_ext
     if hrtf_selection == 'minimum' or hrtf_selection == 'maximum':
         lsd_errors = []
