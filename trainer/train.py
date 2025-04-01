@@ -22,17 +22,24 @@ def get_model_and_optimizer(config: Config):
     device = torch.device(config.device_name if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
     nbins = config.nbins_hrtf * 2 # left and right
-    max_num_coeffs = (config.max_degree + 1) ** 2
-    num_initial_coeff = convert_num_points_to_num_coeff(config.num_initial_points)
+    if config.apply_sht:
+        # max num coeff
+        target_size = (config.max_degree + 1) ** 2
+        # initial num coeff
+        lr_size = convert_num_points_to_num_coeff(config.num_initial_points)
+    else:
+        lr_size = config.num_initial_points
+        target_size = config.max_num_points
     encoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
                                  num_transformer_layers=config.num_encoder_transformer_layers,
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 num_initial_coeff=num_initial_coeff,
-                                 max_num_coeff=max_num_coeffs,
-                                 latent_dim=config.latent_dim)
+                                 lr_size=lr_size,
+                                 target_size=target_size,
+                                 latent_dim=config.latent_dim,
+                                 apply_sht=config.apply_sht)
     
     decoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
@@ -40,9 +47,10 @@ def get_model_and_optimizer(config: Config):
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 num_initial_coeff=config.num_initial_points,
-                                 max_num_coeff=max_num_coeffs,
-                                 latent_dim=config.latent_dim)
+                                 lr_size=lr_size,
+                                 target_size=target_size,
+                                 latent_dim=config.latent_dim,
+                                 apply_sht=config.apply_sht)
     
     # model initialization
     hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)
@@ -113,9 +121,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
         mean, std = load_mean_std(config, device)
 
     train_loss_list = []
-    train_content_loss_list = []
-    train_sh_coeff_mse_list = []
-    train_sh_coeff_cos_list = []
+    if config.apply_sht:
+        train_content_loss_list = []
+        train_sh_coeff_mse_list = []
+        train_sh_coeff_cos_list = []
 
     for epoch in range(config.num_epochs):
         with open(log_file_path, "a") as f:
@@ -123,9 +132,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
 
         times = []
         train_loss = 0.
-        train_content_loss = 0.
-        train_sh_coeff_mse_loss = 0.
-        train_sh_coeff_cos_loss = 0.
+        if config.apply_sht:
+            train_content_loss = 0.
+            train_sh_coeff_mse_loss = 0.
+            train_sh_coeff_cos_loss = 0.
 
         # Initialize the number of data batches to print logs on the terminal
         batch_index = 0
@@ -143,18 +153,25 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 start_overall = time.time()
 
             # Transfer in-memory data to CUDA devices to speed up training
-            lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
-                                                             non_blocking=True, dtype=torch.float)
-            hr_coefficient = batch_data["hr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
-                                                             non_blocking=True, dtype=torch.float)
-            hrtf = batch_data["hrtf"].to(device=device, memory_format=torch.contiguous_format,
-                                         non_blocking=True, dtype=torch.float)
-            masks = batch_data["mask"]
-            
-            sr = model(lr_coefficient)
-            sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
-            sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
-            recons = inverse_sht(config, sr, masks)
+            if config.apply_sht:
+                lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
+                                                                non_blocking=True, dtype=torch.float)
+                hr_coefficient = batch_data["hr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
+                                                                non_blocking=True, dtype=torch.float)
+                hrtf = batch_data["hrtf"].to(device=device, memory_format=torch.contiguous_format,
+                                            non_blocking=True, dtype=torch.float)
+                masks = batch_data["mask"]
+                
+                sr = model(lr_coefficient)
+                sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
+                sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
+                recons = inverse_sht(config, sr, masks)
+            else:
+                lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
+                                                   non_blocking=True, dtype=torch.float)
+                hrtf = batch_data["hr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
+                                                   non_blocking=True, dtype=torch.float)
+                recons = model(lr_hrtf)
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
@@ -167,12 +184,16 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # loss
             unweighted_content_loss = content_criterion(config, recons, hrtf, sd_mean, sd_std, ild_mean, ild_std)
             content_loss = config.content_weight * unweighted_content_loss
-            loss = content_loss + sh_coeff_cos_loss
+            if config.apply_sht:
+                loss = content_loss + sh_coeff_cos_loss
+            else:
+                loss = content_loss
 
             train_loss += loss.item()
-            train_content_loss += content_loss.item()
-            train_sh_coeff_cos_loss += sh_coeff_cos_loss.item()
-            train_sh_coeff_mse_loss += sh_coeff_mse_loss.item()
+            if config.apply_sht:
+                train_content_loss += content_loss.item()
+                train_sh_coeff_cos_loss += sh_coeff_cos_loss.item()
+                train_sh_coeff_mse_loss += sh_coeff_mse_loss.item()
             
             # backward
             loss.backward()
@@ -184,7 +205,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
-                f.write(f"content loss: {content_loss.item()}, sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n\n")
+                if config.apply_sht:
+                    f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
+                    f.write(f"content loss: {content_loss.item()}\n\n")
+                
             
             if ('cuda' in str(device)) and (ngpu > 1):
                 end_overall.record()
@@ -208,26 +232,31 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # terminal print data normally
             batch_index += 1
         train_loss_list.append(train_loss / len(train_prefetcher))
-        train_content_loss_list.append(train_content_loss / len(train_prefetcher))
-        train_sh_coeff_cos_list.append(train_sh_coeff_cos_loss / len(train_prefetcher))
-        train_sh_coeff_mse_list.append(train_sh_coeff_mse_loss / len(train_prefetcher))
+        if config.apply_sht:
+            train_content_loss_list.append(train_content_loss / len(train_prefetcher))
+            train_sh_coeff_cos_list.append(train_sh_coeff_cos_loss / len(train_prefetcher))
+            train_sh_coeff_mse_list.append(train_sh_coeff_mse_loss / len(train_prefetcher))
         print(f"Average epoch loss: {train_loss_list[-1]}")
-        print(f"Average content loss: {train_content_loss_list[-1]}")
-        print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
+        if config.apply_sht:
+            print(f"Average content loss: {train_content_loss_list[-1]}")
+            print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
     
     # plot loss curves
     plot_path = os.path.join(plot_dir, "losses")
     os.makedirs(plot_path, exist_ok=True)
     plot_losses([train_loss_list], ['Training loss'], ['red'], path=plot_path, filename='loss', title="Training Loss")
-    plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
-    plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
-    plot_losses([train_loss_list, train_content_loss_list, train_sh_coeff_cos_list],
-                ['Training loss', 'Content loss', 'coefficient sim loss'],
-                ['green', 'purple', 'red'],
-                path=plot_path, filename='loss_curves', title="Training loss curves")
-    
-    with open(f'{log_dir}/train_losses.pickle', "wb") as file:
-        pickle.dump((train_loss_list, train_content_loss_list, train_sh_coeff_cos_list, train_sh_coeff_mse_list), file)
+    if config.apply_sht:
+        plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
+        plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
+        plot_losses([train_loss_list, train_content_loss_list, train_sh_coeff_cos_list],
+                    ['Training loss', 'Content loss', 'coefficient sim loss'],
+                    ['green', 'purple', 'red'],
+                    path=plot_path, filename='loss_curves', title="Training loss curves")
+        with open(f'{log_dir}/train_losses.pickle', "wb") as file:
+            pickle.dump((train_loss_list, train_content_loss_list, train_sh_coeff_cos_list, train_sh_coeff_mse_list), file)
+    else:
+        with open(f'{log_dir}/train_losses.pickle', "wb") as file:
+            pickle.dump((train_loss_list))
     print("TRAINING FINISHED")
     
 def train_model(config: Config):

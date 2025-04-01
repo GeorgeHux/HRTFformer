@@ -8,6 +8,7 @@ class ModelConfig:
     num_heads: int
     num_groups: int
     dropout: float
-    num_initial_coeff: int
-    max_num_coeff: int
+    lr_size: int
+    target_size: int
     latent_dim: int
+    apply_sht: bool

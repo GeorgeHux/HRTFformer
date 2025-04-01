@@ -4,13 +4,13 @@ from .attention import GroupedQueryAttention
 from .normalization import RMSNorm
 
 class TransformerBlock(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., max_num_coeff=484):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., target_size=484):
         super(TransformerBlock, self).__init__()
         """
         Args:
-            max_num_coeff: used for position embedding
+            target_size: used for position embedding
         """
-        self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, max_num_coeff)
+        self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
         self.norm1 = RMSNorm(emb_size)
         self.norm2 = RMSNorm(emb_size)
         
@@ -31,7 +31,7 @@ class TransformerBlock(nn.Module):
         return out
 
 class Encoder(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, dropout, max_num_coeff) -> None:
+    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, dropout, target_size) -> None:
         super().__init__()
         self.layers = nn.ModuleList(
             [
@@ -41,7 +41,7 @@ class Encoder(nn.Module):
                     num_heads,
                     num_groups,
                     dropout,
-                    max_num_coeff
+                    target_size
                 )
                 for _ in range(num_layers)
             ]
@@ -55,12 +55,12 @@ class Encoder(nn.Module):
         return out
     
 class DecoderBlock(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout, max_num_coeff):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout, target_size):
         super(DecoderBlock, self).__init__()
         self.norm = RMSNorm(emb_size)
-        self.self_attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, max_num_coeff)
+        self.self_attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
         self.transfomer_block = TransformerBlock(
-            emb_size, hidden_size, num_heads, num_groups, dropout, max_num_coeff
+            emb_size, hidden_size, num_heads, num_groups, dropout, target_size
         )
         self.dropout = nn.Dropout(dropout)
 
@@ -71,11 +71,11 @@ class DecoderBlock(nn.Module):
         return out
     
 class Decoder(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, dropout, max_num_coeff) -> None:
+    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, dropout, target_size) -> None:
         super(Decoder, self).__init__()
         self.layers = nn.ModuleList(
             [
-                DecoderBlock(emb_size, hidden_size, num_heads, num_groups, dropout, max_num_coeff)
+                DecoderBlock(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
                 for _ in range(num_layers)
             ]
         )
@@ -96,7 +96,7 @@ class Transformer(nn.Module):
             num_heads=32,
             num_groups=8,
             dropout=0,
-            max_num_coeff=484,
+            target_size=484,
             device="cpu",
     ):
         super(Transformer, self).__init__()
@@ -108,7 +108,7 @@ class Transformer(nn.Module):
             num_heads=num_heads,
             num_groups=num_groups,
             dropout=dropout,
-            max_num_coeff=max_num_coeff
+            target_size=target_size
         )
 
         self.decoder = Decoder(
@@ -118,7 +118,7 @@ class Transformer(nn.Module):
             num_heads=num_heads,
             num_groups=num_groups,
             dropout=dropout,
-            max_num_coeff=max_num_coeff
+            target_size=target_size
         )
 
         self.lr_pad_idx = lr_pad_idx
@@ -166,14 +166,14 @@ if __name__ == "__main__":
     x = torch.randn(batch_size, query_len, embed_dim)
     num_layers = 2
     dropout = 0
-    max_num_coeff = 484
-    encoder = Encoder(embed_dim, hidden_size, num_layers, num_heads, num_groups, dropout, max_num_coeff)
+    target_size = 484
+    encoder = Encoder(embed_dim, hidden_size, num_layers, num_heads, num_groups, dropout, target_size)
     encoder_out = encoder(x, None)
     print(encoder_out.shape)
 
     print("------------test Decoder------------")
     y = torch.randn(batch_size, key_len, embed_dim)
-    decoder = Decoder(embed_dim, hidden_size, num_layers, num_heads, num_groups, dropout, max_num_coeff)
+    decoder = Decoder(embed_dim, hidden_size, num_layers, num_heads, num_groups, dropout, target_size)
     lr_mask = (encoder_out != 0).any(-1).unsqueeze(1).unsqueeze(2)
     hr_mask = torch.tril(torch.ones((key_len, key_len))).expand(batch_size, 1, key_len, key_len)
     decoder_out = decoder(y, encoder_out, lr_mask, hr_mask)
@@ -184,6 +184,6 @@ if __name__ == "__main__":
     hr_sample = torch.randn(batch_size, key_len, embed_dim)
     model = Transformer(lr_pad_idx=0, emb_size=embed_dim, hidden_size=hidden_size,
                         num_layers=num_layers, num_heads=num_heads, num_groups=num_groups,
-                        dropout=dropout, max_num_coeff=max_num_coeff)
+                        dropout=dropout, target_size=target_size)
     upsampeld_sample = model(lr_sample, hr_sample)
     print(upsampeld_sample.shape)

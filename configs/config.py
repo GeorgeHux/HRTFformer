@@ -29,6 +29,7 @@ class Config:
         self.normalize_input = False
         self.domain = 'magnitude_db'
         self.max_degree = 21
+        self.max_num_points = 72 * 12
 
         # Data dirs
         if remote:
@@ -66,10 +67,10 @@ class Config:
         self.num_epochs = 100  # was originally 250
         self.lr = 1e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
-        self.apply_sht = True
+        self.apply_sht = False
 
         # model parameters
-        self.latent_dim = 128
+        self.latent_dim = 256
         self.lr_pad_idx=0
         self.hidden_size = 4096
         self.num_encoder_transformer_layers = 4
