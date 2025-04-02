@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 from data.dataset import CUDAPrefetcher, CPUPrefetcher, MergeHRTFDataset
 from configs.config import Config
+from configs.model_config import ModelConfig
+from model.model import HRTF_Transformer
 import importlib
 
 def compute_sh_degree(config):
@@ -297,3 +299,42 @@ def plot_test_sample_hrtf(path, ir_id, ori_hrtf, recon_hrtf, is_min=True):
 def convert_num_points_to_num_coeff(num_points):
     # minimum coefficients is set to 4
     return max(4, math.floor(math.sqrt(num_points)) ** 2)
+
+def get_model(config: Config):
+    ngpu = config.ngpu
+    device = torch.device(config.device_name if (torch.cuda.is_available() and ngpu > 0) else "cpu")
+
+    nbins = config.nbins_hrtf * 2 # left and right
+    if config.apply_sht:
+        # max num coeff
+        target_size = (config.max_degree + 1) ** 2
+        # initial num coeff
+        lr_size = convert_num_points_to_num_coeff(config.num_initial_points)
+    else:
+        lr_size = config.num_initial_points
+        target_size = config.max_num_points
+    encoder_config = ModelConfig(nbins=nbins,
+                                 hidden_size=config.hidden_size,
+                                 num_transformer_layers=config.num_encoder_transformer_layers,
+                                 num_heads=config.num_heads,
+                                 num_groups=config.num_groups,
+                                 dropout=config.dropout,
+                                 lr_size=lr_size,
+                                 target_size=target_size,
+                                 latent_dim=config.latent_dim,
+                                 apply_sht=config.apply_sht)
+    
+    decoder_config = ModelConfig(nbins=nbins,
+                                 hidden_size=config.hidden_size,
+                                 num_transformer_layers=config.num_decoder_transformer_layers,
+                                 num_heads=config.num_heads,
+                                 num_groups=config.num_groups,
+                                 dropout=config.dropout,
+                                 lr_size=lr_size,
+                                 target_size=target_size,
+                                 latent_dim=config.latent_dim,
+                                 apply_sht=config.apply_sht)
+    
+    # model initialization
+    hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)
+    return hrtf_transformer

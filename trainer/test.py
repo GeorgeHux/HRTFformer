@@ -15,7 +15,7 @@ from trainer.utils import *
 from configs.config import Config
 from configs.model_config import  ModelConfig
 
-def test(config: Config, checkpoint_path):
+def test(config: Config, checkpoint):
     domain = config.domain
 
     if config.normalize_input:
@@ -40,39 +40,19 @@ def test(config: Config, checkpoint_path):
     # get data distribution info (row angles, column angles, radii) for latter use
     config.row_angles, config.column_angles, config.radii = get_dataset_info(config)
 
+    checkpoint_path = os.path.dirname(checkpoint)
     recon_mag_dir = checkpoint_path + '/mag'
     recon_db_dir = checkpoint_path + '/db'
     os.makedirs(recon_mag_dir, exist_ok=True)
     os.makedirs(recon_db_dir, exist_ok=True)
 
     nbins = config.nbins_hrtf * 2
-    num_initial_coeff = convert_num_points_to_num_coeff(config.num_initial_points)
-    max_num_coeffs = (config.max_degree + 1) ** 2
-    encoder_config = ModelConfig(nbins=nbins,
-                                 hidden_size=config.hidden_size,
-                                 num_transformer_layers=config.num_encoder_transformer_layers,
-                                 num_heads=config.num_heads,
-                                 num_groups=config.num_groups,
-                                 dropout=config.dropout,
-                                 num_initial_coeff=num_initial_coeff,
-                                 max_num_coeff=max_num_coeffs,
-                                 latent_dim=config.latent_dim)
-    
-    decoder_config = ModelConfig(nbins=nbins,
-                                 hidden_size=config.hidden_size,
-                                 num_transformer_layers=config.num_decoder_transformer_layers,
-                                 num_heads=config.num_heads,
-                                 num_groups=config.num_groups,
-                                 dropout=config.dropout,
-                                 num_initial_coeff=num_initial_coeff,
-                                 max_num_coeff=max_num_coeffs,
-                                 latent_dim=config.latent_dim)
+
     # model initialization
-    model = HRTF_Transformer(encoder_config, decoder_config).to(device)
+    model = get_model(config)
     print("Build hrtf transformer model successfully.")
-    checkpoint = checkpoint_path + '/transformer.pt'
     model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
-    print(f"Load hrtf transformer model weights '{checkpoint_path} successfully.'")
+    print(f"Load hrtf transformer model weights '{checkpoint} successfully.'")
 
     param_size = 0
     for param in model.parameters():
@@ -99,27 +79,42 @@ def test(config: Config, checkpoint_path):
     count = 0
     avg_lsd = []
     while batch_data is not None:
-        print(f"test {count + 1} / {len(test_prefetcher)}")
-        lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
-                                                         non_blocking=True, dtype=torch.float)
-        hrtf = batch_data["hrtf"].detach().cpu()
-        mask = batch_data["mask"]
         sample_id = batch_data["id"].item()
-
-        # upsample lr coefficient
-        with torch.no_grad():
-            sr = model(lr_coefficient)
-        recon = inverse_sht(config, sr, mask)[0].detach().cpu()
-
+        print(f"test {count + 1} / {len(test_prefetcher)}")
+        if config.apply_sht:
+            lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
+                                                             non_blocking=True, dtype=torch.float)
+            hrtf = batch_data["hrtf"].detach().cpu()
+            mask = batch_data["mask"]
+            # upsample lr coefficient
+            with torch.no_grad():
+                sr = model(lr_coefficient)
+            recon = inverse_sht(config, sr, mask)[0].detach().cpu()
+        else:
+            lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
+                                               non_blocking=True, dtype=torch.float)
+            hrtf = batch_data["hr_hrtf"].detach().cpu()
+            recon = model(lr_hrtf)
+            recon = recon.reshape(hrtf.shape)[0].detach().cpu()
+            
         # save reconstructed hrtfs into pickle files
         file_name = '/' + f"{config.dataset}_{sample_id}.pickle"
-        with open(recon_db_dir + file_name, "wb") as file:
-            recon_db = recon.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
-            pickle.dump(recon_db, file)
-        with open(recon_mag_dir + file_name, "wb") as file:
-            recon_mag = 10 ** (recon / 20)
-            recon_mag = recon_mag.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
-            pickle.dump(recon_mag, file)
+        if domain == "magnitude_db":
+            with open(recon_db_dir + file_name, "wb") as file:
+                recon_db = recon.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
+                pickle.dump(recon_db, file)
+            with open(recon_mag_dir + file_name, "wb") as file:
+                recon_mag = 10 ** (recon / 20)
+                recon_mag = recon_mag.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
+                pickle.dump(recon_mag, file)
+        elif domain == "magnitude_db":
+            with open(recon_mag_dir + file_name, "wb") as file:
+                recon_mag = recon.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
+                pickle.dump(recon_mag, file)
+            with open(recon_db_dir + file_name, "wb") as file:
+                recon_db = 20 * torch.log10(recon)
+                recon_db = recon_db.permute(2, 3, 1, 0)
+                pickle.dump(recon_db, file)
 
         ir_id = 0
         max_value = None
@@ -174,6 +169,7 @@ def test(config: Config, checkpoint_path):
 
         # Preload the next batch of data
         batch_data = test_prefetcher.next()
+        count += 1
     print("lsd for all test subject: ", avg_lsd)
     mean_lsd = np.mean(avg_lsd)
     print("avg lsd: ", mean_lsd)

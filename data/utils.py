@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 import pickle
 import importlib
+
+from configs.config import Config
 from .hrtfdata.transforms.hrirs import SphericalHarmonicsTransform
 
 def load_mean_std(config, device):
@@ -16,7 +18,7 @@ def load_mean_std(config, device):
     else:
         return None, None
 
-def get_dataset_info(config):
+def get_dataset_info(config: Config):
     data_dir = config.raw_hrtf_dir / config.dataset
     domain = config.domain
     imp = importlib.import_module('data.hrtfdata.full')

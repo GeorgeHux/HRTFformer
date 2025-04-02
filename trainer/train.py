@@ -1,5 +1,4 @@
 import pickle
-import importlib
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -18,42 +17,8 @@ from configs.model_config import  ModelConfig
 from model.model import HRTF_Transformer
 
 def get_model_and_optimizer(config: Config):
-    ngpu = config.ngpu
-    device = torch.device(config.device_name if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-
-    nbins = config.nbins_hrtf * 2 # left and right
-    if config.apply_sht:
-        # max num coeff
-        target_size = (config.max_degree + 1) ** 2
-        # initial num coeff
-        lr_size = convert_num_points_to_num_coeff(config.num_initial_points)
-    else:
-        lr_size = config.num_initial_points
-        target_size = config.max_num_points
-    encoder_config = ModelConfig(nbins=nbins,
-                                 hidden_size=config.hidden_size,
-                                 num_transformer_layers=config.num_encoder_transformer_layers,
-                                 num_heads=config.num_heads,
-                                 num_groups=config.num_groups,
-                                 dropout=config.dropout,
-                                 lr_size=lr_size,
-                                 target_size=target_size,
-                                 latent_dim=config.latent_dim,
-                                 apply_sht=config.apply_sht)
-    
-    decoder_config = ModelConfig(nbins=nbins,
-                                 hidden_size=config.hidden_size,
-                                 num_transformer_layers=config.num_decoder_transformer_layers,
-                                 num_heads=config.num_heads,
-                                 num_groups=config.num_groups,
-                                 dropout=config.dropout,
-                                 lr_size=lr_size,
-                                 target_size=target_size,
-                                 latent_dim=config.latent_dim,
-                                 apply_sht=config.apply_sht)
-    
     # model initialization
-    hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)
+    hrtf_transformer = get_model(config)
 
     # optimizer
     optimizer = optim.Adam(hrtf_transformer.parameters(), lr=config.lr)
@@ -156,19 +121,21 @@ def train(config: Config, model, optimizer, train_prefetcher):
             if config.apply_sht:
                 # lr_coefficient shape: [b, num_initial_coefficients, nbins]
                 lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
-                                                                non_blocking=True, dtype=torch.float)
+                                                                 non_blocking=True, dtype=torch.float)
                 # hr_coefficient shape: [b, nbins, num_coefficients]
                 hr_coefficient = batch_data["hr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
-                                                                non_blocking=True, dtype=torch.float)
+                                                                 non_blocking=True, dtype=torch.float)
                 # hrtf shape: [b, nbins, r, w, h]
                 hrtf = batch_data["hrtf"].to(device=device, memory_format=torch.contiguous_format,
-                                            non_blocking=True, dtype=torch.float)
+                                             non_blocking=True, dtype=torch.float)
                 masks = batch_data["mask"]
                 
                 sr = model(lr_coefficient)
                 sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
                 sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
+                print(f"debug---lj train masks: {type(masks)}")
                 recons = inverse_sht(config, sr, masks)
+                exit()
             else:
                 # lr_hrtf shape: [b, num_initial_points, nbins]
                 lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
@@ -228,7 +195,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # Every 0th batch log useful metrics
             if batch_index == 0:
                 with torch.no_grad():
-                    torch.save(model.state_dict(), f'{checkpoint_dir}/transformer.pt')
+                    torch.save(model.state_dict(), f'{checkpoint_dir}/transformer_{epoch}.pt')
                     progress(batch_index, batches, epoch, config.num_epochs, timed=np.mean(times))
                     times = []
 

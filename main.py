@@ -102,8 +102,9 @@ def main(config: Config, mode):
     
     elif mode == 'test':
         print("using cuda? ", torch.cuda.is_available())
-        checkpoint_path = None
-        test(config, checkpoint_path)
+        checkpoint = "/Users/lijian/Downloads/shtHRTF/checkpoints/27/2025-04-02_14-12-31/transformer.pt"
+        test(config, checkpoint)
+        checkpoint_path = os.path.dirname(checkpoint)
         sr_dir = checkpoint_path + '/mag'
         run_lsd_evaluation(config, sr_dir)
         # run_localisation_evaluation(config, sr_dir)
