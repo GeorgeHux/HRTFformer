@@ -68,6 +68,7 @@ class Config:
         self.lr = 1e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = False
+        self.use_mse_loss = True
 
         # model parameters
         self.latent_dim = 256
@@ -80,7 +81,7 @@ class Config:
         self.dropout = 0
 
         # Loss function weight
-        self.content_weight = 0.01
+        self.content_weight = 1
 
         self.ngpu = 1
         if self.ngpu > 0:
