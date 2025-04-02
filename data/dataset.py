@@ -89,6 +89,7 @@ class MergeHRTFDataset(Dataset):
             selected_rows = [coord[0] for coord in self.selected_coords]
             selected_cols = [coord[1] for coord in self.selected_coords]
             lr_hrtf = merge[:, :, selected_rows, selected_cols]
+            lr_hrtf = lr_hrtf.reshape(lr_hrtf.shape[0], -1).T # [num_points, nbins]
             return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}
     
     def __len__(self):

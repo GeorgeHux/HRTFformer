@@ -154,10 +154,13 @@ def train(config: Config, model, optimizer, train_prefetcher):
 
             # Transfer in-memory data to CUDA devices to speed up training
             if config.apply_sht:
+                # lr_coefficient shape: [b, num_initial_coefficients, nbins]
                 lr_coefficient = batch_data["lr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
                                                                 non_blocking=True, dtype=torch.float)
+                # hr_coefficient shape: [b, nbins, num_coefficients]
                 hr_coefficient = batch_data["hr_coefficient"].to(device=device, memory_format=torch.contiguous_format,
                                                                 non_blocking=True, dtype=torch.float)
+                # hrtf shape: [b, nbins, r, w, h]
                 hrtf = batch_data["hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                             non_blocking=True, dtype=torch.float)
                 masks = batch_data["mask"]
@@ -167,11 +170,15 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
                 recons = inverse_sht(config, sr, masks)
             else:
+                # lr_hrtf shape: [b, num_initial_points, nbins]
                 lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                    non_blocking=True, dtype=torch.float)
+                # hrtf shape: [b, nbins, r, w, h]
                 hrtf = batch_data["hr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                    non_blocking=True, dtype=torch.float)
+                # recons shape: [b, num_points, nbins]
                 recons = model(lr_hrtf)
+                recons = recons.reshape(hrtf.shape)
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
