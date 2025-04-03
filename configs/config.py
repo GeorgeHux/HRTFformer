@@ -69,6 +69,7 @@ class Config:
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = False
         self.use_mse_loss = True
+        self.save_interval = 25
 
         # model parameters
         self.latent_dim = 256

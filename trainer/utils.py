@@ -4,6 +4,7 @@ import pickle
 import math
 
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
@@ -211,11 +212,16 @@ def sd_ild_loss(config, generated, target, sd_mean, sd_std, ild_mean, ild_std):
 
 
 def cos_similarity_loss(generated, target):
-    cos_similarity_criterion = nn.CosineSimilarity(dim=2)
-    avg_cos_loss_over_frequency = ((1-cos_similarity_criterion(generated, target))**2).mean(1)
-    # take square root and average over batch size
-    cos_loss = torch.sqrt(avg_cos_loss_over_frequency).mean()
-    return cos_loss
+    # cos_similarity_criterion = nn.CosineSimilarity(dim=2)
+    # avg_cos_loss_over_frequency = ((1-cos_similarity_criterion(generated, target))**2).mean(1)
+    # # take square root and average over batch size
+    # cos_loss = torch.sqrt(avg_cos_loss_over_frequency).mean()
+    # return cos_loss
+    
+    # simplified version 0402
+    cos_sim = F.cosine_similarity(generated, target, dim=-1)
+    return (1 - cos_sim).mean()
+    
 
 def compute_gradient_penalty(discriminator, real_data, fake_data):
     batch_size = real_data.size(0)

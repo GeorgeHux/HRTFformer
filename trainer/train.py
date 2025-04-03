@@ -43,6 +43,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
         f.write("Training parameters:\n")
         f.write(f"Num epochs: {config.num_epochs}\n")
         f.write(f"lr: {config.lr}\n")
+        f.write(f"use mse loss: {config.use_mse_loss}")
         f.write(f"apply sht: {config.apply_sht}\n\n")
         f.write(f"Model parameters:\n")
         f.write(f"latent dim: {config.latent_dim}\n")
@@ -71,8 +72,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
     print(device, " will be used.\n")
     cudnn.benchmark = True
 
+    # loss functions
     cos_similarity_criterion = cos_similarity_loss
     content_criterion = sd_ild_loss
+    mse_loss_fn = nn.MSELoss()
 
     # mean and std for ILD and SD, which are used for normalization
     # computed based on average ILD and SD for training data, when comparing each individual
@@ -131,9 +134,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 masks = batch_data["mask"]
                 
                 sr = model(lr_coefficient)
-                sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
-                sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
-                print(f"debug---lj train masks: {type(masks)}")
+                # cosine similarity loss
+                if not config.use_mse_loss:
+                    sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
+                    sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
                 recons = inverse_sht(config, sr, masks)
                 exit()
             else:
@@ -156,15 +160,18 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 plot_hrtf(generated.detach().cpu(), target.detach().cpu(), plot_dir, filename)
 
             # loss
-            unweighted_content_loss = content_criterion(config, recons, hrtf, sd_mean, sd_std, ild_mean, ild_std)
-            content_loss = config.content_weight * unweighted_content_loss
-            if config.apply_sht:
-                loss = content_loss + sh_coeff_cos_loss
+            if config.use_mse_loss:
+                loss = mse_loss_fn(recons, hrtf)
             else:
-                loss = content_loss
+                unweighted_content_loss = content_criterion(config, recons, hrtf, sd_mean, sd_std, ild_mean, ild_std)
+                content_loss = config.content_weight * unweighted_content_loss
+                if config.apply_sht:
+                    loss = content_loss + sh_coeff_cos_loss
+                else:
+                    loss = content_loss
 
             train_loss += loss.item()
-            if config.apply_sht:
+            if config.apply_sht and not config.use_mse_loss:
                 train_content_loss += content_loss.item()
                 train_sh_coeff_cos_loss += sh_coeff_cos_loss.item()
                 train_sh_coeff_mse_loss += sh_coeff_mse_loss.item()
@@ -179,7 +186,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
-                if config.apply_sht:
+                if config.apply_sht and not config.use_mse_loss:
                     f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
                     f.write(f"content loss: {content_loss.item()}\n\n")
                 
@@ -195,7 +202,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # Every 0th batch log useful metrics
             if batch_index == 0:
                 with torch.no_grad():
-                    torch.save(model.state_dict(), f'{checkpoint_dir}/transformer_{epoch}.pt')
+                    if epoch % config.save_interval == 0 or epoch == (config.num_epochs - 1):
+                        torch.save(model.state_dict(), f'{checkpoint_dir}/transformer_{epoch}.pt')
                     progress(batch_index, batches, epoch, config.num_epochs, timed=np.mean(times))
                     times = []
 
@@ -206,12 +214,12 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # terminal print data normally
             batch_index += 1
         train_loss_list.append(train_loss / len(train_prefetcher))
-        if config.apply_sht:
+        if config.apply_sht and not config.use_mse_loss:
             train_content_loss_list.append(train_content_loss / len(train_prefetcher))
             train_sh_coeff_cos_list.append(train_sh_coeff_cos_loss / len(train_prefetcher))
             train_sh_coeff_mse_list.append(train_sh_coeff_mse_loss / len(train_prefetcher))
         print(f"Average epoch loss: {train_loss_list[-1]}")
-        if config.apply_sht:
+        if config.apply_sht and not config.use_mse_loss:
             print(f"Average content loss: {train_content_loss_list[-1]}")
             print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
     
@@ -219,7 +227,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     plot_path = os.path.join(plot_dir, "losses")
     os.makedirs(plot_path, exist_ok=True)
     plot_losses([train_loss_list], ['Training loss'], ['red'], path=plot_path, filename='loss', title="Training Loss")
-    if config.apply_sht:
+    if config.apply_sht and not config.use_mse_loss:
         plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
         plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
         plot_losses([train_loss_list, train_content_loss_list, train_sh_coeff_cos_list],
