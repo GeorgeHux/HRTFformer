@@ -238,7 +238,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             pickle.dump((train_loss_list, train_content_loss_list, train_sh_coeff_cos_list, train_sh_coeff_mse_list), file)
     else:
         with open(f'{log_dir}/train_losses.pickle', "wb") as file:
-            pickle.dump((train_loss_list))
+            pickle.dump((train_loss_list), file)
     print("TRAINING FINISHED")
     
 def train_model(config: Config):
