@@ -83,6 +83,7 @@ class Config:
 
         # Loss function weight
         self.content_weight = 1
+        self.mse_scale = 0.01
 
         self.ngpu = 1
         if self.ngpu > 0:
