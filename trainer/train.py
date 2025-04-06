@@ -147,7 +147,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 # hrtf shape: [b, nbins, r, w, h]
                 hrtf = batch_data["hr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                    non_blocking=True, dtype=torch.float)
-                # recons shape: [b, num_points, nbins]
+                # recons shape: [b, nbins, num_points]
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
 

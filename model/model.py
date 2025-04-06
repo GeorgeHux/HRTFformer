@@ -46,9 +46,9 @@ class DownsampleLayer(nn.Module):
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
-        x = x.permute(0, 2, 1) # adjust to [batch_size, channels,num_elements]
+        x = x.permute(0, 2, 1).contiguous() # adjust to [batch_size, channels,num_elements]
         x = self.conv(x)
-        x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
+        x = x.permute(0, 2, 1).contiguous() # adjust back to [batch_size, num_elements, channels]
         return x
 
 class Encoder(nn.Module):
@@ -84,12 +84,14 @@ class Encoder(nn.Module):
         output_size = self._get_output_dim(model_config.lr_size)
         self.fc = nn.Sequential(nn.Linear(output_size * in_channels // 2, 1024),
                                 nn.BatchNorm1d(1024),
-                                nn.PReLU(),
+                                # nn.PReLU(),
+                                nn.GELU(),
                                 nn.Linear(1024, model_config.latent_dim))
         self.latent_conv = nn.Sequential(
             nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(1024),
-            nn.PReLU(),
+            # nn.PReLU(),
+            nn.GELU(),
             nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
         )
 
@@ -131,7 +133,8 @@ class Decoder(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(model_config.latent_dim, 4*in_channels),
             nn.BatchNorm1d(4 * in_channels),
-            nn.PReLU(),
+            # nn.PReLU(),
+            nn.GELU(),
             Reshape(-1, 4, in_channels)
         )
         self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)

@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 from einops import einsum, rearrange
+import math
 from .position_embedding import RotaryEmbedding
 
 class GroupedQueryAttention(nn.Module):
@@ -25,27 +27,61 @@ class GroupedQueryAttention(nn.Module):
         self.out_proj = nn.Linear(hidden_size, emb_size)
         self.dropout = nn.Dropout(dropout)
 
+        self._init_weight()
+
+    def _init_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
     def forward(self, query, key, value, mask=None):
         b, q_len = query.shape[:2]
         query = self.query_proj(query) # [b, q_len, hidden_size]
-        query = rearrange(query, "b sq (n d) -> b n sq d", d=self.head_dim)
+        query = rearrange(query, "b sq (n d) -> b n sq d", d=self.head_dim).contiguous()
         query = self.query_rope(query)
-        query = rearrange(query, "b (g h) sq d -> b g h sq d", g=self.num_groups)
+        query = rearrange(query, "b (g h) sq d -> b g h sq d", g=self.num_groups).contiguous()
+
         key = self.key_proj(key)
-        key = rearrange(key, "b sk (h d) -> b h sk d", d=self.head_dim)
+        key = rearrange(key, "b sk (h d) -> b h sk d", d=self.head_dim).contiguous()
         key = self.key_rope(key)
         value = self.value_proj(value)
-        value = rearrange(value, "b sv (h d) -> b h sv d", d=self.head_dim)
+        value = rearrange(value, "b sv (h d) -> b h sv d", d=self.head_dim).contiguous()
         scale = self.head_dim ** 0.5
         # calculate attention scores
         scores = einsum(query, key, "b g h sq d, b h sk d -> b h sq sk")
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float("-1e20"))
-        attention = torch.softmax(scores / scale, dim=3) # [b, head_per_group, q_len, k_len]
+        attention = torch.softmax(scores / (scale + 1e-6), dim=3) # [b, head_per_group, q_len, k_len]
+        attention = self.dropout(attention)
 
         out = einsum(attention, value, "b h sq sk, b h sv d -> b sq h d").reshape(b, q_len, -1) # sk = sv
         out = self.out_proj(out) # [b, q_len, emb_size]
         return out
+
+class ChannelAttention(nn.Module):
+    def __init__(self, channels, reduction=16):
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.max_pool = nn.AdaptiveMaxPool1d(1)
+
+        self.fc1 = nn.Conv1d(channels, channels // reduction, 1, bias=False)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Conv1d(channels // reduction, channels, 1, bias=False)
+        self.sigmoid = nn.Sigmoid()
+    
+    def forward(self, x):
+        x = x.permute(0, 2, 1) # [batch_size, feature, channel] -> [batch_size, channel, feature]
+        avg_out = self.avg_pool(x)
+        max_out = self.max_pool(x)
+        out = avg_out + max_out
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.fc2(out)
+        attention_weights = self.sigmoid(out)
+        x = x * attention_weights
+        x = x.permute(0, 2, 1)
+        return x
 
 if __name__ == "__main__":
     batch_size = 2

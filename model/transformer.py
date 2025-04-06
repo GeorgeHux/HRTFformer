@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 from .attention import GroupedQueryAttention
 from .normalization import RMSNorm
 
@@ -16,11 +17,23 @@ class TransformerBlock(nn.Module):
         
         self.mlp = nn.Sequential(
             nn.Linear(emb_size, 4096),
-            nn.PReLU(),
+            # nn.PReLU(),
+            nn.GELU(),
+            nn.Dropout(dropout),
             nn.Linear(4096, emb_size)
         )
 
         self.dropout = nn.Dropout(dropout)
+
+        # Initialize parameters
+        self._init_mlp_weights()
+    
+    def _init_mlp_weights(self):
+        for layer in self.mlp:
+            if isinstance(layer, nn.Linear):
+                init.xavier_uniform_(layer.weight)
+                if layer.bias is not None:
+                    init.zeros_(layer.bias)
 
     def forward(self, query, key, value, mask):
         attention = self.attention(query, key, value, mask)
