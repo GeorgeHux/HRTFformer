@@ -79,7 +79,7 @@ class Config:
         self.num_decoder_transformer_layers = 4
         self.num_heads = 32
         self.num_groups = 8
-        self.dropout = 0
+        self.dropout = 0.1
 
         # Loss function weight
         self.content_weight = 1

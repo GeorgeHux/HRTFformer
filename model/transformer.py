@@ -14,12 +14,14 @@ class TransformerBlock(nn.Module):
         self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
         self.norm1 = RMSNorm(emb_size)
         self.norm2 = RMSNorm(emb_size)
+        # self.norm1 = nn.LayerNorm(emb_size)
+        # self.norm2 = nn.LayerNorm(emb_size)
+
         
         self.mlp = nn.Sequential(
             nn.Linear(emb_size, 4096),
             # nn.PReLU(),
             nn.GELU(),
-            nn.Dropout(dropout),
             nn.Linear(4096, emb_size)
         )
 
@@ -59,13 +61,11 @@ class Encoder(nn.Module):
                 for _ in range(num_layers)
             ]
         )
-
-        self.dropout = nn.Dropout(dropout)
     
     def forward(self, x, mask=None):
         for layer in self.layers:
-            out = layer(x, x, x, mask)
-        return out
+            x = layer(x, x, x, mask)
+        return x
     
 class DecoderBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout, target_size):
