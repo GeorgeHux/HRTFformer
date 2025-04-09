@@ -46,9 +46,9 @@ class DownsampleLayer(nn.Module):
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
-        x = x.permute(0, 2, 1).contiguous() # adjust to [batch_size, channels,num_elements]
+        x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
         x = self.conv(x)
-        x = x.permute(0, 2, 1).contiguous() # adjust back to [batch_size, num_elements, channels]
+        x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
         return x
 
 class Encoder(nn.Module):

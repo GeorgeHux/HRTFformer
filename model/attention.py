@@ -7,7 +7,7 @@ import math
 from .position_embedding import RotaryEmbedding
 
 class GroupedQueryAttention(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., max_num_coeff=484):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., target_size=484):
         super(GroupedQueryAttention, self).__init__()
         self.hidden_size = hidden_size
         assert num_heads % num_groups == 0, "num_heads must be divisible by num_groups"
@@ -21,8 +21,8 @@ class GroupedQueryAttention(nn.Module):
         self.value_proj = nn.Linear(emb_size, hidden_size)
 
         # rotary position embedding
-        self.query_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=max_num_coeff)
-        self.key_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=max_num_coeff)
+        self.query_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
+        self.key_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
 
         self.out_proj = nn.Linear(hidden_size, emb_size)
         self.dropout = nn.Dropout(dropout)

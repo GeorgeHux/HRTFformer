@@ -75,11 +75,11 @@ class Config:
         self.latent_dim = 256
         self.lr_pad_idx=0
         self.hidden_size = 4096
-        self.num_encoder_transformer_layers = 4
-        self.num_decoder_transformer_layers = 4
+        self.num_encoder_transformer_layers = 1
+        self.num_decoder_transformer_layers = 1
         self.num_heads = 32
         self.num_groups = 8
-        self.dropout = 0.1
+        self.dropout = 0.
 
         # Loss function weight
         self.content_weight = 1
