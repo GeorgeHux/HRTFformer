@@ -102,7 +102,7 @@ def main(config: Config, mode):
     
     elif mode == 'test':
         print("using cuda? ", torch.cuda.is_available())
-        checkpoint = "/Users/lijian/Downloads/shtHRTF/checkpoints/27/2025-04-02_14-12-31/transformer.pt"
+        checkpoint = "C:/Users/steph/Desktop/XuyiHu/output/checkpoints/3/2025-04-10_15-40-10/transformer_249.pt"
         test(config, checkpoint)
         checkpoint_path = os.path.dirname(checkpoint)
         sr_dir = checkpoint_path + '/mag'

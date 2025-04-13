@@ -2,6 +2,7 @@ import pickle
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import CosineAnnealingLR
 import numpy as np
 import torch
 import torch.nn as nn
@@ -71,6 +72,9 @@ def train(config: Config, model, optimizer, train_prefetcher):
     print(f'Using {ngpu} GPUs. ')
     print(device, " will be used.\n")
     cudnn.benchmark = True
+
+    # set lr sheduler
+    lr_scheduler = CosineAnnealingLR(optimizer, T_max=10)
 
     # loss functions
     cos_similarity_criterion = cos_similarity_loss
@@ -179,19 +183,21 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # backward
             loss.backward()
 
-            # 计算梯度的范数
-            total_norm = 0
-            for p in model.parameters():
-                if p.grad is not None:
-                    param_norm = p.grad.data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-
-            print(f'Total gradient norm: {total_norm}')
+            # # 计算梯度的范数
+            # total_norm = 0
+            # for p in model.parameters():
+            #     if p.grad is not None:
+            #         param_norm = p.grad.data.norm(2)
+            #         total_norm += param_norm.item() ** 2
+            # total_norm = total_norm ** 0.5
+            # print(f'Total gradient norm: {total_norm}')
 
             # optimizer
             optimizer.step()
             optimizer.zero_grad()
+
+            # lr scheduler
+            lr_scheduler.step()
 
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")

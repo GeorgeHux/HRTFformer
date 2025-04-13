@@ -6,14 +6,10 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 
-from model.model import HRTF_Transformer
-
-from data.hrtfdata.transforms.hrirs import SphericalHarmonicsTransform
 from data.utils import get_dataset_info, load_mean_std, inverse_sht
 
 from trainer.utils import *
 from configs.config import Config
-from configs.model_config import  ModelConfig
 
 def test(config: Config, checkpoint):
     domain = config.domain
@@ -94,8 +90,9 @@ def test(config: Config, checkpoint):
             lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                non_blocking=True, dtype=torch.float)
             hrtf = batch_data["hr_hrtf"].detach().cpu()
-            recon = model(lr_hrtf)
-            recon = recon.reshape(hrtf.shape)[0].detach().cpu()
+            with torch.no_grad():
+                recon = model(lr_hrtf)
+            recon = recon.reshape(hrtf.shape)[0].detach().cpu() # nbins x r x w x h
             
         # save reconstructed hrtfs into pickle files
         file_name = '/' + f"{config.dataset}_{sample_id}.pickle"
@@ -107,7 +104,7 @@ def test(config: Config, checkpoint):
                 recon_mag = 10 ** (recon / 20)
                 recon_mag = recon_mag.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
                 pickle.dump(recon_mag, file)
-        elif domain == "magnitude_db":
+        elif domain == "magnitude":
             with open(recon_mag_dir + file_name, "wb") as file:
                 recon_mag = recon.permute(2, 3, 1, 0) # nbins x r x w x h -> w x h x r x nbins
                 pickle.dump(recon_mag, file)
@@ -128,12 +125,12 @@ def test(config: Config, checkpoint):
         total_sd_metric = 0
         print("subject: ", sample_id)
         for original, generated in zip(original_hrtf, recon):
-            if domain == "meganitude_db":
+            if domain == "magnitude_db":
                 original = 10 ** (original / 20)
                 generated = 10 ** (generated / 20)
 
             if domain == "magnitude_db" or domain == "magnitude":
-                average_over_frequencies = spectral_distortion_inner(abs(generated), abs(original))
+                average_over_frequencies = spectral_distortion_inner(generated, original)
             elif domain == "time":
                 nbins = config.nbins_hrtf
                 ori_tf_left = abs(scipy.fft.rfft(original[:nbins], nbins*2)[1:])
@@ -160,7 +157,7 @@ def test(config: Config, checkpoint):
         sd_metric = total_all_position / total_positions
         total_sd_metric += sd_metric
         avg_lsd.append(sd_metric)
-        print("Log SD (across all positions: ", float(sd_metric))
+        print("Log SD (across all positions): ", float(sd_metric))
 
         if plot_min_max_diff:
             plot_test_sample_hrtf(checkpoint_path, min_id, original_hrtf, recon, is_min=True)

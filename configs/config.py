@@ -62,14 +62,14 @@ class Config:
         # Training hyperparams
         self.batch_size = 8
         self.num_workers = 1
-        self.num_initial_points = 27
+        self.num_initial_points = 3
         self.optimizer = 'adam'
-        self.num_epochs = 100  # was originally 250
-        self.lr = 1e-4
+        self.num_epochs = 250  # was originally 250
+        self.lr = 2e-2
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = False
         self.use_mse_loss = True
-        self.save_interval = 25
+        self.save_interval = 100
 
         # model parameters
         self.latent_dim = 256
@@ -83,7 +83,7 @@ class Config:
 
         # Loss function weight
         self.content_weight = 1
-        self.mse_scale = 0.01
+        self.mse_scale = 1
 
         self.ngpu = 1
         if self.ngpu > 0:

@@ -66,12 +66,12 @@ def load_hrtf(config: Config, mean=None, std=None):
                                   drop_last=False,
                                   persistent_workers=True)
     test_dataloader = DataLoader(val_dataset,
-                                  batch_size=1,
-                                  shuffle=False,
-                                  num_workers=1,
-                                  pin_memory=True,
-                                  drop_last=False,
-                                  persistent_workers=True)
+                                 batch_size=1,
+                                 shuffle=False,
+                                 num_workers=1,
+                                 pin_memory=True,
+                                 drop_last=False,
+                                 persistent_workers=True)
     
     # Place all data on the preprocessing data loader
     if torch.cuda.is_available() and config.ngpu > 0:
