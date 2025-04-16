@@ -104,7 +104,15 @@ def spectral_distortion_inner(input_spectrum, target_spectrum, domain="magnitude
         return torch.mean((20 * torch.log10(numerator / denominator)) ** 2)
     else:
         return torch.mean((numerator - denominator) ** 2)
-    
+
+def spectral_distortion_inner_v1(input_spectrum, target_spectrum, domain="magnitude"):
+    # this function is used for computing the spectral distortion for input with shape of [b, nbins, r, w, h]
+    numerator = target_spectrum
+    denominator = input_spectrum
+    if domain == "magnitude": 
+        return torch.mean((20 * torch.log10(numerator / denominator)) ** 2, dim=1)
+    else:
+        return torch.mean((numerator - denominator) ** 2, dim=1)
 
 def spectral_distortion_metric(generated, target, reduction='mean', domain="magnitude"):
     """Computes the mean spectral distortion metric for a 5 dimensional tensor (N x C x P x W x H)
@@ -117,18 +125,20 @@ def spectral_distortion_metric(generated, target, reduction='mean', domain="magn
     width = generated.size(3)
     height = generated.size(4)
     total_positions = num_panels * height * width
-    total_sd_metric = 0
-    for b in range(batch_size):
-        total_all_positions = 0
-        for i in range(num_panels):
-            for j in range(width):
-                for k in range(height):
-                    average_over_frequencies = spectral_distortion_inner(generated[b, :, i, j, k],
-                                                                         target[b, :, i, j, k], domain)
-                    total_all_positions += torch.sqrt(average_over_frequencies)
-        sd_metric = total_all_positions / total_positions
-        total_sd_metric += sd_metric
-
+    # total_sd_metric = 0
+    # for b in range(batch_size):
+    #     total_all_positions = 0
+    #     for i in range(num_panels):
+    #         for j in range(width):
+    #             for k in range(height):
+    #                 average_over_frequencies = spectral_distortion_inner(generated[b, :, i, j, k],
+    #                                                                      target[b, :, i, j, k], domain)
+    #                 total_all_positions += torch.sqrt(average_over_frequencies)
+    #     sd_metric = total_all_positions / total_positions
+    #     total_sd_metric += sd_metric
+    average_over_frequencies = spectral_distortion_inner_v1(generated, target, domain)
+    total_all_positions = torch.sum(torch.sqrt(average_over_frequencies))
+    total_sd_metric = total_all_positions / total_positions
     if reduction == 'mean':
         output_loss = total_sd_metric / batch_size
     elif reduction == 'sum':
@@ -139,12 +149,12 @@ def spectral_distortion_metric(generated, target, reduction='mean', domain="magn
     return output_loss
 
 
-def ILD_metric_inner(config, input_spectrum, target_spectrum, domain="magnitude"):
+def ILD_metric_inner(config, input_spectrum, target_spectrum):
     input_left = input_spectrum[:config.nbins_hrtf]
     input_right = input_spectrum[config.nbins_hrtf:]
     target_left = target_spectrum[:config.nbins_hrtf]
     target_right = target_spectrum[config.nbins_hrtf:]
-    if domain == "magnitude":
+    if config.domain == "magnitude":
         input_ILD = torch.mean((20 * torch.log10(input_left / input_right)))
         target_ILD = torch.mean((20 * torch.log10(target_left / target_right)))
     else:
@@ -152,25 +162,41 @@ def ILD_metric_inner(config, input_spectrum, target_spectrum, domain="magnitude"
         target_ILD = torch.mean(target_left - target_right)
     return torch.abs(input_ILD - target_ILD)
 
+def ILD_metric_inner_v1(config: Config, input_spectrum, target_spectrum):
+    # this function is used for computing ild loss for input with shape of [b, nbins, r, w, h]
+    input_left = input_spectrum[:,:config.nbins_hrtf,...]
+    input_right = input_spectrum[:,config.nbins_hrtf:,...]
+    target_left = target_spectrum[:,:config.nbins_hrtf,...]
+    target_right = target_spectrum[:,config.nbins_hrtf:,...]
+    if config.domain == "magnitude":
+        input_ILD = torch.mean((20 * torch.log10(input_left / input_right)), dim=1)
+        target_ILD = torch.mean((20 * torch.log10(target_left / target_right)), dim=1)
+    else:
+        input_ILD = torch.mean(input_left - input_right, dim=1)
+        target_ILD = torch.mean(target_left - target_right, dim=1)
+    return torch.abs(input_ILD - target_ILD)
 
-def ILD_metric(config, generated, target, reduction="mean"):
+
+def ILD_metric(config: Config, generated, target, reduction="mean"):
     batch_size = generated.size(0)
     num_panels = generated.size(2)
     height = generated.size(3)
     width = generated.size(4)
     total_positions = num_panels * height * width
-    domain = config.domain
 
-    total_ILD_metric = 0
-    for b in range(batch_size):
-        total_all_positions = 0
-        for i in range(num_panels):
-            for j in range(height):
-                for k in range(width):
-                    average_over_frequencies = ILD_metric_inner(config, generated[b, :, i, j, k], target[b, :, i, j, k], domain)
-                    total_all_positions += average_over_frequencies
-        ILD_metric_batch = total_all_positions / total_positions
-        total_ILD_metric += ILD_metric_batch
+    # total_ILD_metric = 0
+    # for b in range(batch_size):
+    #     total_all_positions = 0
+    #     for i in range(num_panels):
+    #         for j in range(height):
+    #             for k in range(width):
+    #                 average_over_frequencies = ILD_metric_inner(config, generated[b, :, i, j, k], target[b, :, i, j, k])
+    #                 total_all_positions += average_over_frequencies
+    #     ILD_metric_batch = total_all_positions / total_positions
+    #     total_ILD_metric += ILD_metric_batch
+
+    average_over_frequencies = ILD_metric_inner_v1(config, generated, target)
+    total_ILD_metric = torch.sum(average_over_frequencies) / total_positions
 
     if reduction == 'mean':
         output_loss = total_ILD_metric / batch_size

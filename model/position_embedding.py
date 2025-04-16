@@ -42,6 +42,26 @@ class RotaryEmbedding(nn.Module):
         sin = self.sin_cached[:,:,:seq_len, ...]
         return apply_rotary_pos_emb(x, cos, sin)
 
+
+class RelativePositionBias(nn.Module):
+    def __init__(self, num_heads, max_distance):
+        super().__init__()
+        self.max_distance = max_distance
+        # learnable relative position maxtix [2 * max_distance, num_heads]
+        self.bias_table = nn.Parameter(torch.randn(2 * max_distance - 1, num_heads))
+
+    def forward(self, q_len, k_len):
+        q_pos = torch.arange(q_len, dtype=torch.long)
+        k_pos = torch.arange(k_len, dtype=torch.long)
+        rel_pos = k_pos[None, :] - q_pos[:, None] # [q_len, k_len]
+
+        # map the relative position to [0, 2 * max_distance - 2]
+        rel_pos = torch.clamp(rel_pos + self.max_distance - 1, 0, 2 * self.max_distance - 2)
+
+        # retrieve bias from bias table
+        bias = self.bias_table[rel_pos] # [q_len, k_len, num_heads]
+        return bias.permute(2, 0, 1).unsqueeze(0) # [1, num_heads, q_len, k_len]
+
 if __name__ == "__main__":
     dim = 256
     x = torch.randn(2, 32, 122, dim)

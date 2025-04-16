@@ -3,28 +3,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from einops import einsum, rearrange
-import math
 from .position_embedding import RotaryEmbedding
 
 class GroupedQueryAttention(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., target_size=484):
         super(GroupedQueryAttention, self).__init__()
+        """
+        num_groups:
+            = 1 -> multi-query attention, all queies share 1 pair of key, value
+            = num_heads -> multi-head attention, each query relates to an unique pair of key, value
+        
+        """
         self.hidden_size = hidden_size
         assert num_heads % num_groups == 0, "num_heads must be divisible by num_groups"
         self.num_heads = num_heads
         self.num_groups = num_groups
+        self.num_kv_hedas = num_heads // num_groups
         self.head_dim = hidden_size // num_heads
         assert self.head_dim * num_heads == hidden_size, "hidden_size must be divisible by num_heads"
 
-        self.query_proj = nn.Linear(emb_size, hidden_size*num_groups)
-        self.key_proj = nn.Linear(emb_size, hidden_size)
-        self.value_proj = nn.Linear(emb_size, hidden_size)
+        self.query_proj = nn.Linear(emb_size, hidden_size, bias=False)
+        self.key_proj = nn.Linear(emb_size, self.head_dim * num_groups, bias=False)
+        self.value_proj = nn.Linear(emb_size, self.head_dim * num_groups, bias=False)
 
         # rotary position embedding
         self.query_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
         self.key_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
 
-        self.out_proj = nn.Linear(hidden_size, emb_size)
+        self.out_proj = nn.Linear(hidden_size, emb_size, bias=False)
         self.dropout = nn.Dropout(dropout)
 
         self._init_weight()
@@ -44,19 +50,20 @@ class GroupedQueryAttention(nn.Module):
         query = rearrange(query, "b (g h) sq d -> b g h sq d", g=self.num_groups).contiguous()
 
         key = self.key_proj(key)
-        key = rearrange(key, "b sk (h d) -> b h sk d", d=self.head_dim).contiguous()
+        key = rearrange(key, "b sk (g d) -> b g sk d", d=self.head_dim).contiguous()
         key = self.key_rope(key)
         value = self.value_proj(value)
-        value = rearrange(value, "b sv (h d) -> b h sv d", d=self.head_dim).contiguous()
+        value = rearrange(value, "b sv (g d) -> b g sv d", d=self.head_dim).contiguous()
         scale = self.head_dim ** 0.5
+        
         # calculate attention scores
-        scores = einsum(query, key, "b g h sq d, b h sk d -> b h sq sk")
+        scores = einsum(query, key, "b g h sq d, b g sk d -> b g h sq sk")
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float("-1e20"))
-        attention = torch.softmax(scores / (scale + 1e-6), dim=3) # [b, head_per_group, q_len, k_len]
+        attention = torch.softmax(scores / (scale + 1e-6), dim=-1) # [b, group, head_per_group, q_len, k_len]
         attention = self.dropout(attention)
 
-        out = einsum(attention, value, "b h sq sk, b h sv d -> b sq h d").reshape(b, q_len, -1) # sk = sv
+        out = einsum(attention, value, "b g h sq sk, b g sv d -> b sq g h d").reshape(b, q_len, -1) # sk = sv
         out = self.out_proj(out) # [b, q_len, emb_size]
         return out
 
