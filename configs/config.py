@@ -11,7 +11,7 @@ class Config:
     def __init__(self, remote, dataset=None, existing_model_tag=None, data_dir=None):
 
         # overwrite settings with arguments provided
-        self.dataset = dataset if dataset is not None else 'SONICOM'
+        self.dataset = dataset if dataset is not None else 'Sonicom' # 'SONICOM'
         self.data_dir = data_dir if data_dir is not None else '/data/' + self.dataset
 
         if existing_model_tag is not None:
@@ -30,6 +30,7 @@ class Config:
         self.domain = 'magnitude_db'
         self.max_degree = 21
         self.max_num_points = 72 * 12
+        self.hrtf_loader = "hartufo"
 
         # Data dirs
         if remote:
@@ -38,7 +39,6 @@ class Config:
         else:
             self.data_dir_path = '/Users/lijian/Downloads/shtHRTF'
             self.raw_hrtf_dir = Path('/Users/lijian/Downloads')
-
 
         self.result_folder = '/results'
         self.existing_model_path = f'{self.data_dir_path}{self.result_folder}/{self.existing_model_tag}'
@@ -53,8 +53,9 @@ class Config:
 
         self.train_val_id_dir = self.data_dir_path + self.data_dir + '/train_val_id'
 
-        self.mean_std_filename = self.data_dir_path + self.data_dir + '/mean_std_' + self.dataset
+        self.mean_std_filename = self.data_dir_path + self.data_dir + '/mean_std_' + f'{self.dataset}.pickle'
         self.mean_std_coef_dir = self.data_dir_path + self.data_dir + '/coef_mean_std'
+        self.train_sd_ild_mean_std_filename = self.data_dir_path + self.data_dir + f'/{self.dataset}_train_sd_ild_mean_std.pickle'
 
         self.log_path = f'{self.data_dir_path}/logs'
         self.checkpoint_path = f'{self.data_dir_path}/checkpoints'
@@ -76,7 +77,7 @@ class Config:
         self.lr_pad_idx=0
         self.hidden_size = 4096
         self.num_encoder_transformer_layers = 1
-        self.num_decoder_transformer_layers = 1
+        self.num_decoder_transformer_layers = 2
         self.num_heads = 32
         self.num_groups = 8
         self.dropout = 0.
@@ -107,4 +108,5 @@ class Config:
         self.raw_hrtf_dir = Path(self.raw_hrtf_dir)
 
     def get_train_params(self):
+        # deprecated
         return self.batch_size, self.latent_dim, self.max_degree

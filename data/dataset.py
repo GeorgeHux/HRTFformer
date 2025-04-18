@@ -40,37 +40,45 @@ def get_sample_coords(num_initial_points):
     raise ValueError(f"the num_initial_points {num_initial_points} is not predefined!")
     
 class MergeHRTFDataset(Dataset):
-    def __init__(self, left_hrtf, right_hrtf, num_initial_points, max_degree=21, apply_sht=True, transform=None):
+    def __init__(self, hrtf_loader, left_hrtf, right_hrtf, num_initial_points, max_degree=21, apply_sht=True, transform=None):
         super(MergeHRTFDataset, self).__init__()
         self.left_hrtf = left_hrtf
         self.right_hrtf = right_hrtf
-        self.num_initial_points = num_initial_points
-        self.num_row_angles, self.num_col_angles = len(self.left_hrtf.row_angles), len(self.left_hrtf.column_angles)
-        self.num_radii = len(self.left_hrtf.radii)
-        self.degree = max(1, int(np.sqrt(num_initial_points) - 1))
-        self.max_degree = max_degree
+        if apply_sht:
+            self.num_initial_points = num_initial_points
+            if hrtf_loader == 'hrtfdata':
+                self.row_angles, self.column_angles = left_hrtf.row_angles, left_hrtf.column_angles
+            elif hrtf_loader == 'hartufo':
+                self.row_angles, self.column_angles = left_hrtf.fundamental_angles, left_hrtf.orthogonal_angles
+            else:
+                raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
+            self.num_row_angles, self.num_col_angles = len(self.row_angles), len(self.column_angles)
+            self.num_radii = len(self.left_hrtf.radii)
+            self.degree = max(1, int(np.sqrt(num_initial_points) - 1))
+            self.max_degree = max_degree
+            self.apply_sht = apply_sht
         self.transform = transform
         self.selected_coords = get_sample_coords(num_initial_points)
-        self.apply_sht = apply_sht
 
     def __getitem__(self, index: int):
         left = self.left_hrtf[index]['features'][:, :, :, 1:]
         right = self.right_hrtf[index]['features'][:, :, :, 1:]
         sample_id = self.left_hrtf.subject_ids[index]
         merge = np.ma.concatenate([left, right], axis=3)
+        selected_rows = [coord[0] for coord in self.selected_coords]
+        selected_cols = [coord[1] for coord in self.selected_coords]
         
         if self.apply_sht:
             original_mask = np.all(np.ma.getmaskarray(left), axis=3)
             mask = np.ones((self.num_row_angles, self.num_col_angles, self.num_radii), dtype=bool)
-            for coord in self.selected_coords:
-                mask[coord[0], coord[1], :] = original_mask[coord[0], coord[1], :]
-            lr_SHT = SphericalHarmonicsTransform(self.degree, self.left_hrtf.row_angles,
-                                                self.left_hrtf.column_angles,
+            mask[selected_rows, selected_cols, :] = original_mask[selected_rows, selected_cols, :]
+            lr_SHT = SphericalHarmonicsTransform(self.degree, self.row_angles,
+                                                self.column_angles,
                                                 self.left_hrtf.radii,
                                                 mask)
             lr_coefficient = torch.from_numpy(lr_SHT(merge)) # [num_coefficients, nbins]
-            hr_SHT = SphericalHarmonicsTransform(self.max_degree, self.left_hrtf.row_angles,
-                                                self.left_hrtf.column_angles,
+            hr_SHT = SphericalHarmonicsTransform(self.max_degree, self.row_angles,
+                                                self.column_angles,
                                                 self.left_hrtf.radii,
                                                 original_mask)
             hr_coefficient = torch.from_numpy(hr_SHT(merge).T)
@@ -86,8 +94,6 @@ class MergeHRTFDataset(Dataset):
                     "hrtf": merge, "mask": original_mask, "id": sample_id}
         else:
             merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
-            selected_rows = [coord[0] for coord in self.selected_coords]
-            selected_cols = [coord[1] for coord in self.selected_coords]
             lr_hrtf = merge[:, :, selected_rows, selected_cols]
             lr_hrtf = lr_hrtf.reshape(lr_hrtf.shape[0], -1).T # [num_points, nbins]
             return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}

@@ -5,6 +5,7 @@ import importlib
 
 from configs.config import Config
 from .hrtfdata.transforms.hrirs import SphericalHarmonicsTransform
+from .hartufo import HrirSpec
 
 def load_mean_std(config, device):
     if config.normalize_input:
@@ -18,14 +19,35 @@ def load_mean_std(config, device):
     else:
         return None, None
 
+def get_hrtf_loader_function(config: Config):
+    hrtf_loader = config.hrtf_loader
+    if hrtf_loader == "hartufo":
+        imp = importlib.import_module('data.hartufo.full')
+        dataset = config.dataset.capitalize() # Sonicom
+    elif hrtf_loader == "hrtfdata":
+        imp = importlib.import_module('data.hrtfdata.full')
+        dataset = config.dataset.upper() # SONICOM
+    else:
+        raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
+
+    load_function = getattr(imp, dataset)
+    return load_function
+    
+
 def get_dataset_info(config: Config):
-    data_dir = config.raw_hrtf_dir / config.dataset
-    domain = config.domain
-    imp = importlib.import_module('data.hrtfdata.full')
-    load_function = getattr(imp, config.dataset)
-    ds = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
-                                                         'side': 'left', 'domain': domain}}, subject_ids='first')
-    return ds.row_angles, ds.column_angles, ds.radii
+    load_function = get_hrtf_loader_function(config)
+    dataset = config.dataset.upper() # SONICOM
+    data_dir = config.raw_hrtf_dir / dataset
+    hrtf_loader = config.hrtf_loader
+    if hrtf_loader == "hartufo":
+        ds = load_function(data_dir, features_spec=HrirSpec(domain="magnitude", side="left", samplerate=config.hrir_samplerate), subject_ids='first')
+        return ds.fundamental_angles. ds.orthogonal_angles, ds.radii
+    elif hrtf_loader == "hrtfdata":
+        ds = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
+                                                             'side': 'left', 'domain': config.domain}}, subject_ids='first')
+        return ds.row_angles, ds.column_angles, ds.radii
+    else:
+        raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
 
 def inverse_sht(config, sr, masks):
     harmonics_list = []

@@ -12,12 +12,13 @@ import importlib
 from configs.config import Config
 from trainer.train import train_model
 from trainer.test import test
-from trainer.utils import load_hrtf
 from data.preprocessing.utils import convert_to_sofa
 
 # from baselines.barycentric_interpolation import run_barycentric_interpolation
 # from baselines.hrtf_selection import run_hrtf_selection
 from evaluation.evaluation import run_lsd_evaluation, run_localisation_evaluation
+from data.hartufo import Sonicom, HrirSpec
+from data.utils import get_hrtf_loader_function
 
 import shutil
 from pathlib import Path
@@ -33,14 +34,24 @@ def main(config: Config, mode):
     print(os.getcwd())
     print(config.dataset)
 
-    imp = importlib.import_module('data.hrtfdata.full')
-    load_function = getattr(imp, config.dataset)
+    load_function = get_hrtf_loader_function(config)
+    hrtf_loader = config.hrtf_loader
 
     if mode == 'preprocess':
-        ds_left = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
-                                                                  'side': 'left', 'domain': 'magnitude_db'}})
-        ds_right = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
-                                                                  'side': 'right', 'domain': 'magnitude_db'}})
+        if hrtf_loader == 'hartufo':
+            ds_left = load_function(data_dir, features_spec=HrirSpec(domain="magnitude_db", side="left", samplerate=config.hrir_samplerate))
+            ds_right = load_function(data_dir, features_spec=HrirSpec(domain="magnitude_db", side="right", samplerate=config.hrir_samplerate))
+            row_angles = ds_left.fundamental_angles
+            column_angles = ds_left.orthogonal_angles
+        elif hrtf_loader == 'hrtfdata':
+            ds_left = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
+                                                                      'side': 'left', 'domain': 'magnitude_db'}})
+            ds_right = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
+                                                                       'side': 'right', 'domain': 'magnitude_db'}})
+            row_angles = ds_left.row_angles
+            column_angles = ds_left.column_angles
+        else:
+            raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
         
         # Split data into train and test sets
         train_size = int(len(set(ds_left.subject_ids)) * config.train_samples_ratio)
@@ -62,10 +73,11 @@ def main(config: Config, mode):
         Path(valid_target_path).mkdir(parents=True, exist_ok=True)
 
         # collect all train_hrtfs to get mean and sd
-        num_rows = len(ds_left.row_angles)
-        num_columns = len(ds_left.column_angles)
+        num_rows = len(row_angles)
+        num_columns = len(column_angles)
         j = 0
         train_hrtfs = torch.empty(size=(2 * train_size, 1, num_rows, num_columns, config.nbins_hrtf))
+        all_train_samples = []
         for i in range(len(ds_left)):
             left = ds_left[i]['features'][:, :, :, 1:]
             right = ds_right[i]['features'][:, :, :, 1:]
@@ -77,14 +89,16 @@ def main(config: Config, mode):
                 j += 1
                 train_hrtfs[j] = merge[:, :, :, config.nbins_hrtf:] # add right
                 j += 1
+                all_train_samples.append(merge)
             else: # store test HRTFs
                 subject_id = str(ds_left.subject_ids[i])
                 file_name = '/' + f"{config.dataset}_{subject_id}.pickle"
                 with open(valid_target_path + file_name, "wb") as file:
                     pickle.dump(merge, file)
 
+        # compute sd_mean, sd_std, ild_mean, ild_std in train samples
         if config.gen_sofa_flag:
-            convert_to_sofa(valid_target_path, config, ds_left.row_angles, ds_left.column_angles)
+            convert_to_sofa(valid_target_path, config, row_angles, column_angles)
 
         # save dataset mean and standard deviation for each channel, across all HRTFs in the training data
         mean = torch.mean(train_hrtfs, [0, 1, 2, 3])

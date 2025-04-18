@@ -12,9 +12,12 @@ from data.dataset import CUDAPrefetcher, CPUPrefetcher, MergeHRTFDataset
 from configs.config import Config
 from configs.model_config import ModelConfig
 from model.model import HRTF_Transformer
+from data.utils import get_hrtf_loader_function
+from data.hartufo import HrirSpec
 import importlib
 
 def compute_sh_degree(config):
+    # deprecated
     data_dir = config.raw_hrtf_dir / config.dataset
     imp = importlib.import_module('data.hrtfdata.full')
     load_function = getattr(imp, config.dataset)
@@ -28,9 +31,9 @@ def compute_sh_degree(config):
 
 
 def load_hrtf(config: Config, mean=None, std=None):
-    data_dir = config.raw_hrtf_dir / config.dataset
-    imp = importlib.import_module('data.hrtfdata.full')
-    load_function = getattr(imp, config.dataset)
+    # imp = importlib.import_module('data.hrtfdata.full')
+    # load_function = getattr(imp, config.dataset)
+    load_function = get_hrtf_loader_function(config)
 
     id_file_dir = config.train_val_id_dir
     id_filename = id_file_dir + '/train_val_id.pickle'
@@ -46,17 +49,24 @@ def load_hrtf(config: Config, mean=None, std=None):
     domain = config.domain
     max_degree = config.max_degree
     apply_sht = config.apply_sht
+    hrtf_loader = config.hrtf_loader
 
-    left_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}},
-                               subject_ids=train_ids)
-    right_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}},
-                                subject_ids=train_ids)
-    left_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}},
-                             subject_ids=val_ids)
-    right_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}},
-                              subject_ids=val_ids)
-    train_dataset = MergeHRTFDataset(left_train, right_train, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
-    val_dataset = MergeHRTFDataset(left_val, right_val, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
+    data_dir = config.raw_hrtf_dir / config.dataset.upper()
+
+    if hrtf_loader == "hartufo":
+        left_train = load_function(data_dir, features_spec=HrirSpec(domain=domain, side='left', samplerate=config.hrir_samplerate), subject_ids=train_ids)
+        right_train = load_function(data_dir, features_spec=HrirSpec(domain=domain, side='right', samplerate=config.hrir_samplerate), subject_ids=train_ids)
+        left_val = load_function(data_dir, features_spec=HrirSpec(domain=domain, side='left', samplerate=config.hrir_samplerate), subject_ids=val_ids)
+        right_val = load_function(data_dir, features_spec=HrirSpec(domain=domain, side='right', samplerate=config.hrir_samplerate), subject_ids=val_ids)
+    elif hrtf_loader == "hrtfdata":
+        left_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}}, subject_ids=train_ids)
+        right_train = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}}, subject_ids=train_ids)
+        left_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}}, subject_ids=val_ids)
+        right_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}}, subject_ids=val_ids)
+    else:
+        raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
+    train_dataset = MergeHRTFDataset(hrtf_loader, left_train, right_train, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
+    val_dataset = MergeHRTFDataset(hrtf_loader, left_val, right_val, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=config.batch_size,
@@ -162,13 +172,13 @@ def ILD_metric_inner(config, input_spectrum, target_spectrum):
         target_ILD = torch.mean(target_left - target_right)
     return torch.abs(input_ILD - target_ILD)
 
-def ILD_metric_inner_v1(config: Config, input_spectrum, target_spectrum):
+def ILD_metric_inner_v1(nbins, input_spectrum, target_spectrum, domain="magnitude"):
     # this function is used for computing ild loss for input with shape of [b, nbins, r, w, h]
-    input_left = input_spectrum[:,:config.nbins_hrtf,...]
-    input_right = input_spectrum[:,config.nbins_hrtf:,...]
-    target_left = target_spectrum[:,:config.nbins_hrtf,...]
-    target_right = target_spectrum[:,config.nbins_hrtf:,...]
-    if config.domain == "magnitude":
+    input_left = input_spectrum[:,:nbins,...]
+    input_right = input_spectrum[:,nbins:,...]
+    target_left = target_spectrum[:,:nbins,...]
+    target_right = target_spectrum[:,nbins:,...]
+    if domain == "magnitude":
         input_ILD = torch.mean((20 * torch.log10(input_left / input_right)), dim=1)
         target_ILD = torch.mean((20 * torch.log10(target_left / target_right)), dim=1)
     else:
@@ -177,7 +187,7 @@ def ILD_metric_inner_v1(config: Config, input_spectrum, target_spectrum):
     return torch.abs(input_ILD - target_ILD)
 
 
-def ILD_metric(config: Config, generated, target, reduction="mean"):
+def ILD_metric(nbins, generated, target, reduction="mean", domain="magnitude"):
     batch_size = generated.size(0)
     num_panels = generated.size(2)
     height = generated.size(3)
@@ -195,7 +205,7 @@ def ILD_metric(config: Config, generated, target, reduction="mean"):
     #     ILD_metric_batch = total_all_positions / total_positions
     #     total_ILD_metric += ILD_metric_batch
 
-    average_over_frequencies = ILD_metric_inner_v1(config, generated, target)
+    average_over_frequencies = ILD_metric_inner_v1(nbins, generated, target, domain)
     total_ILD_metric = torch.sum(average_over_frequencies) / total_positions
 
     if reduction == 'mean':
@@ -207,7 +217,7 @@ def ILD_metric(config: Config, generated, target, reduction="mean"):
 
     return output_loss
 
-def sd_ild_loss(config, generated, target, sd_mean, sd_std, ild_mean, ild_std):
+def sd_ild_loss(config: Config, generated, target, sd_mean, sd_std, ild_mean, ild_std):
     """Computes the mean sd/ild loss for a 5 dimensional tensor (N x C x P x W x H)
     Where N is the batch size, C is the number of frequency bins, P is the number of panels (usually 5),
     H is height, and W is width.
@@ -216,7 +226,7 @@ def sd_ild_loss(config, generated, target, sd_mean, sd_std, ild_mean, ild_std):
 
     # calculate SD and ILD metrics
     sd_metric = spectral_distortion_metric(generated, target, domain=config.domain)
-    ild_metric = ILD_metric(config, generated, target)
+    ild_metric = ILD_metric(config.nbins_hrtf, generated, target, domain=config.domain)
     # with open("log.txt", "a") as f:
     #     f.write(f"sd nan? {torch.isnan(sd_metric).any()}")
     #     f.write(f"ild nan? {torch.isnan(ild_metric).any()}")

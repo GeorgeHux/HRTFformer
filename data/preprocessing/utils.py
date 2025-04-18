@@ -11,6 +11,38 @@ from scipy.signal import hilbert
 import shutil
 from pathlib import Path
 import re
+import glob
+
+from configs.config import Config
+from trainer.utils import spectral_distortion_metric, ILD_metric
+
+def get_train_data_statistics(config: Config, train_samples):
+    train_samples = [x.permute(3, 0, 1, 2).unsqueeze(0) for x in train_samples]
+    left_hrtfs = [x[...,:config.nbins_hrtf] for x in train_samples]
+    right_hrtfs = [x[...,config.nbins_hrtf:] for x in train_samples]
+
+    sd = []
+    ild = []
+    
+    for cur in range(len(train_samples)):
+        running_sd = 0
+        running_ild = 0
+        for ref in range(len(train_samples)):
+            if cur != ref:
+                sd_right = spectral_distortion_metric(right_hrtfs[cur], right_hrtfs[ref])
+                sd_left = spectral_distortion_metric(left_hrtfs[cur], left_hrtfs[ref])
+                running_sd += (sd_right + sd_left) / 2.
+
+                running_ild += ILD_metric(config.nbins_hrtf, train_samples[cur], train_samples[ref])
+        sd.append(running_sd / len(train_samples) - 1)
+        ild.append(running_ild / len(train_samples) - 1)
+    sd = torch.tensor(sd)
+    ild = torch.tensor(ild)
+    sd_mean, sd_std = torch.mean(sd).item(), torch.std(sd).item()
+    ild_mean, ild_std = torch.mean(ild).item(), torch.std(ild).item()
+    print(f"sd_mean: {sd_mean}, sd_std: {sd_std}, ild_mean: {ild_mean}, ild_std: {ild_std}")
+    with open(config.train_sd_ild_mean_std_filename, 'wb') as file:
+        pickle.dump((sd_mean, sd_std, ild_mean, ild_std), file)
 
 def add_itd(az, el, hrir, side, fs=48000, r=0.0875, c=343):
 
