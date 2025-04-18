@@ -44,6 +44,7 @@ class MergeHRTFDataset(Dataset):
         super(MergeHRTFDataset, self).__init__()
         self.left_hrtf = left_hrtf
         self.right_hrtf = right_hrtf
+        self.apply_sht = apply_sht
         if apply_sht:
             self.num_initial_points = num_initial_points
             if hrtf_loader == 'hrtfdata':
@@ -56,7 +57,6 @@ class MergeHRTFDataset(Dataset):
             self.num_radii = len(self.left_hrtf.radii)
             self.degree = max(1, int(np.sqrt(num_initial_points) - 1))
             self.max_degree = max_degree
-            self.apply_sht = apply_sht
         self.transform = transform
         self.selected_coords = get_sample_coords(num_initial_points)
 
