@@ -19,6 +19,7 @@ from data.preprocessing.utils import convert_to_sofa
 from evaluation.evaluation import run_lsd_evaluation, run_localisation_evaluation
 from data.hartufo import Sonicom, HrirSpec
 from data.utils import get_hrtf_loader_function
+from data.preprocessing.utils import get_train_data_statistics
 
 import shutil
 from pathlib import Path
@@ -97,6 +98,8 @@ def main(config: Config, mode):
                     pickle.dump(merge, file)
 
         # compute sd_mean, sd_std, ild_mean, ild_std in train samples
+        get_train_data_statistics(config, all_train_samples)
+        
         if config.gen_sofa_flag:
             convert_to_sofa(valid_target_path, config, row_angles, column_angles)
 
