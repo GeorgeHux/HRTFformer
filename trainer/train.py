@@ -84,10 +84,13 @@ def train(config: Config, model, optimizer, train_prefetcher):
     # mean and std for ILD and SD, which are used for normalization
     # computed based on average ILD and SD for training data, when comparing each individual
     # to every other individual in the training data
-    sd_mean = 7.387559253346883
-    sd_std = 0.577364154400081
-    ild_mean = 3.6508303231127868
-    ild_std = 0.5261339271318863
+    with open(config.train_sd_ild_mean_std_filename, 'rb') as f:
+        # sd_mean: 6.12656831741333, sd_std: 0.4705064594745636, ild_mean: 1.9910638332366943, ild_std: 0.4973623752593994
+        sd_mean, sd_std, ild_mean, ild_std = pickle.load(f)
+    # sd_mean = 7.387559253346883
+    # sd_std = 0.577364154400081
+    # ild_mean = 3.6508303231127868
+    # ild_std = 0.5261339271318863
 
     if config.normalize_input:
         mean, std = load_mean_std(config, device)
