@@ -96,6 +96,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
         mean, std = load_mean_std(config, device)
 
     train_loss_list = []
+    grad_norm_list = []
+    sd_loss_list = []
     if config.apply_sht:
         train_content_loss_list = []
         train_sh_coeff_mse_list = []
@@ -107,6 +109,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
 
         times = []
         train_loss = 0.
+        sd_loss = 0.
         if config.apply_sht:
             train_content_loss = 0.
             train_sh_coeff_mse_loss = 0.
@@ -158,6 +161,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
 
+                x = recons.copy()
+                y = hrtf.copy()
+                sd_loss += spectral_distortion_metric(x, y, domain=config.domain).item()
+
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
                 generated = recons[0].permute(2, 3, 1, 0)  # w x h x r x nbins
@@ -186,13 +193,14 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # backward
             loss.backward()
 
-            # # 计算梯度的范数
-            # total_norm = 0
-            # for p in model.parameters():
-            #     if p.grad is not None:
-            #         param_norm = p.grad.data.norm(2)
-            #         total_norm += param_norm.item() ** 2
-            # total_norm = total_norm ** 0.5
+            # compute grad norm
+            total_norm = 0
+            for p in model.parameters():
+                if p.grad is not None:
+                    param_norm = p.grad.data.norm(2)
+                    total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            grad_norm_list.append(total_norm)
             # print(f'Total gradient norm: {total_norm}')
 
             # optimizer
@@ -205,6 +213,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
+                f.write(f"grad_norm: {grad_norm_list[-1]}")
                 if config.apply_sht and not config.use_mse_loss:
                     f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
                     f.write(f"content loss: {content_loss.item()}\n\n")
@@ -233,11 +242,14 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # terminal print data normally
             batch_index += 1
         train_loss_list.append(train_loss / len(train_prefetcher))
+        sd_loss_list.append(sd_loss / len(train_prefetcher))
         if config.apply_sht and not config.use_mse_loss:
             train_content_loss_list.append(train_content_loss / len(train_prefetcher))
             train_sh_coeff_cos_list.append(train_sh_coeff_cos_loss / len(train_prefetcher))
             train_sh_coeff_mse_list.append(train_sh_coeff_mse_loss / len(train_prefetcher))
         print(f"Average epoch loss: {train_loss_list[-1]}")
+        print(f"grad norm: {grad_norm_list[-1]}")
+        print(f"sd loss: {sd_loss_list[-1]}")
         if config.apply_sht and not config.use_mse_loss:
             print(f"Average content loss: {train_content_loss_list[-1]}")
             print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
@@ -246,6 +258,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
     plot_path = os.path.join(plot_dir, "losses")
     os.makedirs(plot_path, exist_ok=True)
     plot_losses([train_loss_list], ['Training loss'], ['red'], path=plot_path, filename='loss', title="Training Loss")
+    plot_losses([grad_norm_list], ['grad norm'], ['green'], path=plot_path, filename='grad_norm', title="Grad Norm")
+    plot_losses([sd_loss_list], ['training sd loss'], ['blue'], path=plot_path, filename='training_sd', title="Training sd")
     if config.apply_sht and not config.use_mse_loss:
         plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
         plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
