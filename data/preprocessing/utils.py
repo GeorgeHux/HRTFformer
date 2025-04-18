@@ -18,8 +18,8 @@ from trainer.utils import spectral_distortion_metric, ILD_metric
 
 def get_train_data_statistics(config: Config, train_samples):
     train_samples = [x.permute(3, 0, 1, 2).unsqueeze(0) for x in train_samples]
-    left_hrtfs = [x[...,:config.nbins_hrtf] for x in train_samples]
-    right_hrtfs = [x[...,config.nbins_hrtf:] for x in train_samples]
+    left_hrtfs = [x[:,:config.nbins_hrtf,...] for x in train_samples]
+    right_hrtfs = [x[:,config.nbins_hrtf:,...] for x in train_samples]
 
     sd = []
     ild = []
