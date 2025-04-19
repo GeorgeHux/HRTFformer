@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from einops import einsum, rearrange
-from .position_embedding import RotaryEmbedding
+from .position_embedding import RotaryEmbedding, RelativePositionBias
 
 class GroupedQueryAttention(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., target_size=484):
@@ -30,6 +30,9 @@ class GroupedQueryAttention(nn.Module):
         self.query_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
         self.key_rope = RotaryEmbedding(dim=self.head_dim, max_seq_len=target_size)
 
+        # relative position bias
+        self.relative_pos_bias = RelativePositionBias(num_heads, max_distance=target_size)
+
         self.out_proj = nn.Linear(hidden_size, emb_size, bias=False)
         self.dropout = nn.Dropout(dropout)
 
@@ -44,6 +47,7 @@ class GroupedQueryAttention(nn.Module):
 
     def forward(self, query, key, value, mask=None):
         b, q_len = query.shape[:2]
+        k_len = key.shape[1]
         query = self.query_proj(query) # [b, q_len, hidden_size]
         query = rearrange(query, "b sq (n d) -> b n sq d", d=self.head_dim).contiguous()
         query = self.query_rope(query)
@@ -55,12 +59,15 @@ class GroupedQueryAttention(nn.Module):
         value = self.value_proj(value)
         value = rearrange(value, "b sv (g d) -> b g sv d", d=self.head_dim).contiguous()
         scale = self.head_dim ** 0.5
-        
+
         # calculate attention scores
         scores = einsum(query, key, "b g h sq d, b g sk d -> b g h sq sk")
+
+        # add relative position bias
+        relative_pos_bias = self.relative_pos_bias(q_len, k_len).view(1, self.num_groups, self.num_kv_hedas, q_len, k_len)
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float("-1e20"))
-        attention = torch.softmax(scores / (scale + 1e-6), dim=-1) # [b, group, head_per_group, q_len, k_len]
+        attention = torch.softmax(scores / (scale) + relative_pos_bias, dim=-1) # [b, group, head_per_group, q_len, k_len]
         attention = self.dropout(attention)
 
         out = einsum(attention, value, "b g h sq sk, b g sv d -> b sq g h d").reshape(b, q_len, -1) # sk = sv

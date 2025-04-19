@@ -167,7 +167,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
 
-                x = recons.detach().clone
+                x = recons.detach().clone()
                 y = hrtf.detach().clone()
                 spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
                 sd_loss += spectral_distorion
