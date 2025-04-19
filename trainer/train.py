@@ -22,7 +22,13 @@ def get_model_and_optimizer(config: Config):
     hrtf_transformer = get_model(config)
 
     # optimizer
-    optimizer = optim.Adam(hrtf_transformer.parameters(), lr=config.lr)
+    if config.optimizer == "adam":
+        optimizer = optim.Adam(hrtf_transformer.parameters(), lr=config.lr)
+    elif config.optimizer == "sgd":
+        optimizer = optim.SGD(hrtf_transformer.parameters(), lr=config.lr, momentum=0.9, weight_decay=0.0001)
+    else:
+        raise ValueError(f"unrecognized optimizer: {config.optimizer}")
+
 
     return hrtf_transformer, optimizer
 
@@ -74,7 +80,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     cudnn.benchmark = True
 
     # set lr sheduler
-    lr_scheduler = CosineAnnealingLR(optimizer, T_max=10)
+    lr_scheduler = CosineAnnealingLR(optimizer, T_max=config.CosineAnnealingLR_period)
 
     # loss functions
     cos_similarity_criterion = cos_similarity_loss
@@ -161,9 +167,10 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
 
-                x = recons.copy()
-                y = hrtf.copy()
-                sd_loss += spectral_distortion_metric(x, y, domain=config.domain).item()
+                x = recons.detach().clone
+                y = hrtf.detach().clone()
+                spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
+                sd_loss += spectral_distorion
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
@@ -214,6 +221,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
                 f.write(f"grad_norm: {grad_norm_list[-1]}")
+                f.write(f"sd: {spectral_distorion}")
                 if config.apply_sht and not config.use_mse_loss:
                     f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
                     f.write(f"content loss: {content_loss.item()}\n\n")
