@@ -155,13 +155,13 @@ class UpsampleLayer(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Decoder, self).__init__()
-        in_channels = 1024
+        in_channels = 512
+        initial_size = 16
         self.fc = nn.Sequential(
-            nn.Linear(model_config.latent_dim, 4*in_channels),
-            nn.BatchNorm1d(4 * in_channels),
-            # nn.PReLU(),
+            nn.Linear(model_config.latent_dim, initial_size*in_channels),
+            nn.BatchNorm1d(initial_size * in_channels),
             nn.GELU(),
-            Reshape(-1, 4, in_channels)
+            Reshape(-1, initial_size, in_channels)
         )
         self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)
         self.layers = nn.ModuleList()
@@ -171,6 +171,8 @@ class Decoder(nn.Module):
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
+            # 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
+            out_channels = [512, 512, 512, 512, 512, 512]
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):
@@ -189,6 +191,8 @@ class Decoder(nn.Module):
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
                 self.layers.append(Trim(model_config.target_size))
+
+        self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
     def forward(self, x):
         # x = self.conv0(x)
@@ -196,6 +200,9 @@ class Decoder(nn.Module):
         x = self.fc(x)
         for layer in self.layers:
             x = layer(x)
+        x = x.permute(0, 2, 1)
+        x = self.out_conv(x)
+        x = x.permute(0, 2, 1)
         return x
 
 class HRTF_Transformer(nn.Module):
