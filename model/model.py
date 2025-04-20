@@ -3,6 +3,7 @@ import torch.nn as nn
 import math
 from .transformer import Encoder as TransformerLayer
 from configs.model_config import ModelConfig
+from .attention import ChannelAttention
 
 num_initial_coeff_to_stides_map = {
     25: [2, 2, 2],
@@ -79,6 +80,10 @@ class Encoder(nn.Module):
                                                 num_groups=model_config.num_groups,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
+            
+            # Add channel attention after transformer
+            self.layers.append(ChannelAttention(channels=in_channels))
+
             # no downsampling for last layer
             if i < num_encoding_layer - 1:
                 self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=in_channels*2,
@@ -176,6 +181,9 @@ class Decoder(nn.Module):
                                                 num_groups=model_config.num_groups,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
+            
+            self.layers.append(ChannelAttention(channels=in_channels))
+
             if layer_index < num_layers - 1:
                 self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
                 in_channels = out_channels[layer_index]

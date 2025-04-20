@@ -35,7 +35,8 @@ class Config:
         # Data dirs
         if remote:
             self.data_dir_path = 'C:/Users/steph/Desktop/XuyiHu/output'
-            self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu')
+            # self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu')
+            self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu/HRTF Datasets')
         else:
             self.data_dir_path = '/Users/lijian/Downloads/shtHRTF'
             self.raw_hrtf_dir = Path('/Users/lijian/Downloads')

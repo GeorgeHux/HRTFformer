@@ -76,6 +76,7 @@ class GroupedQueryAttention(nn.Module):
 
 class ChannelAttention(nn.Module):
     def __init__(self, channels, reduction=16):
+        super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
         self.max_pool = nn.AdaptiveMaxPool1d(1)
 
