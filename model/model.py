@@ -43,12 +43,16 @@ class DownsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, padding=1):
         super(DownsampleLayer, self).__init__()
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
+        self.gelu = nn.GELU()
+        self.norm = nn.LayerNorm(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
         x = self.conv(x)
         x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
+        x = self.gelu(x)
+        x = self.norm(x)
         return x
 
 class Encoder(nn.Module):
@@ -114,16 +118,33 @@ class Encoder(nn.Module):
         x = self.fc(x)
         return x
 
+class TrimLayer(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
+        self.norm = nn.LayerNorm(out_channels)
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        x = self.conv(x)
+        x = x.permute(0, 2, 1)
+        x = self.norm(x)
+        return x
+
 class UpsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, stride=2):
         super(UpsampleLayer, self).__init__()
         self.conv_transpose = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=stride, stride=stride)
+        self.gelu = nn.GELU()
+        self.norm = nn.LayerNorm(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
         x = self.conv_transpose(x)
         x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
+        x = self.gelu(x)
+        x = self.norm(x)
         return x
     
 class Decoder(nn.Module):

@@ -92,6 +92,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     # to every other individual in the training data
     with open(config.train_sd_ild_mean_std_filename, 'rb') as f:
         # sd_mean: 6.12656831741333, sd_std: 0.4705064594745636, ild_mean: 1.9910638332366943, ild_std: 0.4973623752593994
+        # old: sd_mean: 5.916355609893799, sd_std: 0.45490849018096924, ild_mean: 1.7631410360336304, ild_std: 0.4395105242729187
         sd_mean, sd_std, ild_mean, ild_std = pickle.load(f)
     # sd_mean = 7.387559253346883
     # sd_std = 0.577364154400081
