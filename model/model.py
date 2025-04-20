@@ -82,7 +82,7 @@ class Encoder(nn.Module):
                                                 target_size=model_config.target_size))
             
             # Add channel attention after transformer
-            self.layers.append(ChannelAttention(channels=in_channels))
+            # self.layers.append(ChannelAttention(channels=in_channels))
 
             # no downsampling for last layer
             if i < num_encoding_layer - 1:
@@ -182,7 +182,7 @@ class Decoder(nn.Module):
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
             
-            self.layers.append(ChannelAttention(channels=in_channels))
+            # self.layers.append(ChannelAttention(channels=in_channels))
 
             if layer_index < num_layers - 1:
                 self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
