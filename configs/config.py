@@ -30,7 +30,7 @@ class Config:
         self.domain = 'magnitude_db'
         self.max_degree = 21
         self.max_num_points = 72 * 12
-        self.hrtf_loader = "hartufo"
+        self.hrtf_loader = "hrtfdata"
 
         # Data dirs
         if remote:
@@ -77,8 +77,8 @@ class Config:
         self.latent_dim = 256
         self.lr_pad_idx=0
         self.hidden_size = 4096
-        self.num_encoder_transformer_layers = 1
-        self.num_decoder_transformer_layers = 2
+        self.num_encoder_transformer_layers = 2
+        self.num_decoder_transformer_layers = 3
         self.num_heads = 32
         self.num_groups = 8
         self.dropout = 0.
