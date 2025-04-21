@@ -19,10 +19,10 @@ class TransformerBlock(nn.Module):
 
         
         self.mlp = nn.Sequential(
-            nn.Linear(emb_size, 4096),
+            nn.Linear(emb_size, emb_size * 4),
             # nn.PReLU(),
             nn.GELU(),
-            nn.Linear(4096, emb_size)
+            nn.Linear(emb_size * 4, emb_size)
         )
 
         self.dropout = nn.Dropout(dropout)

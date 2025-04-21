@@ -158,7 +158,7 @@ class Decoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Decoder, self).__init__()
         in_channels = 512
-        initial_size = 16
+        initial_size = 8
         self.fc = nn.Sequential(
             nn.Linear(model_config.latent_dim, initial_size*in_channels),
             nn.BatchNorm1d(initial_size * in_channels),
@@ -173,8 +173,8 @@ class Decoder(nn.Module):
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
-            # 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
-            out_channels = [512, 512, 512, 512, 512, 512]
+            # 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
+            out_channels = [512, 512, 512, 512, 512, 512, 512]
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):
