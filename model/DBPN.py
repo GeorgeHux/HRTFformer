@@ -135,7 +135,9 @@ class IterativeBlock(nn.Module):
         self.up3 = D_UpBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
         self.down3 = D_DownBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
         self.up4 = D_UpBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
-        self.out_conv = ConvBlock(4*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
+        self.down4 = D_DownBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
+        self.up5 = D_UpBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
+        self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
         x = x.permute(0, 2, 1)
@@ -154,6 +156,12 @@ class IterativeBlock(nn.Module):
 
         concat_l = torch.cat((l, concat_l), 1)
         h = self.up4(concat_l)
+
+        concat_h = torch.cat((h, concat_h), 1)
+        l = self.down4(concat_h)
+
+        concat_l = torch.cat((l, concat_l), 1)
+        h = self.up5(concat_h)
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)

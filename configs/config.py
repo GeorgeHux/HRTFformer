@@ -66,12 +66,12 @@ class Config:
         self.num_workers = 1
         self.num_initial_points = 3
         self.optimizer = 'adam'
-        self.num_epochs = 250  # was originally 250
-        self.lr = 2e-2
+        self.num_epochs = 300  # was originally 250
+        self.lr = 2e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = False
         self.use_mse_loss = True
-        self.save_interval = 100
+        self.save_interval = 150
         self.CosineAnnealingLR_period = 50
 
         # model parameters
@@ -79,7 +79,8 @@ class Config:
         self.lr_pad_idx=0
         self.hidden_size = 4096
         self.num_encoder_transformer_layers = 2
-        self.num_decoder_transformer_layers = 3
+        self.num_decoder_transformer_layers = 8
+        self.decoder_initial_size = 4
         self.num_heads = 32
         self.num_groups = 8
         self.dropout = 0.

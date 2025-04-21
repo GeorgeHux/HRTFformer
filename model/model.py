@@ -13,7 +13,8 @@ num_initial_coeff_to_stides_map = {
     4: [1, 1, 1],
 }
 
-lr_size_to_strides_map = {
+initial_size_to_strides_map = {
+    864: [2, 2, 2, 2],
     27: [2, 2, 2, 1],
     25: [2, 2, 2, 1],
     18: [2, 2, 1, 1],
@@ -60,10 +61,11 @@ class DownsampleLayer(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Encoder, self).__init__()
-        assert model_config.lr_size in lr_size_to_strides_map, f"invalid initial lr size, should be one of {lr_size_to_strides_map.keys()}"
+        initial_size = model_config.initial_size
+        assert initial_size in initial_size_to_strides_map, f"invalid initial size, should be one of {initial_size_to_strides_map.keys()}"
 
         # strides for downsampling layers
-        self.strides = lr_size_to_strides_map[model_config.lr_size]
+        self.strides = initial_size_to_strides_map[initial_size]
         in_channels = model_config.nbins
         # each layer of Encoder model is constructed by a transformer layer followed by a downsampling layer
         # except the last layer, which is only a transformer layer without downsampling
@@ -92,7 +94,7 @@ class Encoder(nn.Module):
                                                    stride=self.strides[i])) # downsamply by 2 if stride=2
                 in_channels = out_channels
         
-        output_size = self._get_output_dim(model_config.lr_size)
+        output_size = self._get_output_dim(initial_size)
         self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
                                 nn.BatchNorm1d(1024),
                                 # nn.PReLU(),
@@ -106,8 +108,7 @@ class Encoder(nn.Module):
             nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
         )
 
-    def _get_output_dim(self, lr_size):
-        size = lr_size
+    def _get_output_dim(self, size):
         # configuration for convolution layer
         kernel_size = 3
         padding = 1
@@ -158,7 +159,7 @@ class Decoder(nn.Module):
     def __init__(self, model_config: ModelConfig):
         super(Decoder, self).__init__()
         in_channels = 512
-        initial_size = 8
+        initial_size = model_config.initial_size
         self.fc = nn.Sequential(
             nn.Linear(model_config.latent_dim, initial_size*in_channels),
             nn.BatchNorm1d(initial_size * in_channels),
@@ -172,9 +173,9 @@ class Decoder(nn.Module):
             out_channels = [1024, 1024, 512, 512, 256, 256, 256]
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
-            out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
-            # 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
-            out_channels = [512, 512, 512, 512, 512, 512, 512]
+            # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
+            # 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
+            out_channels = [512, 512, 512, 512, 512, 512, 512, 512]
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):
