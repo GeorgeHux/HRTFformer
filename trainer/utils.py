@@ -361,7 +361,7 @@ def get_model(config: Config):
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 lr_size=lr_size,
+                                 initial_size=lr_size,
                                  target_size=target_size,
                                  latent_dim=config.latent_dim,
                                  apply_sht=config.apply_sht)
@@ -372,7 +372,7 @@ def get_model(config: Config):
                                  num_heads=config.num_heads,
                                  num_groups=config.num_groups,
                                  dropout=config.dropout,
-                                 lr_size=config.decoder_initial_size,
+                                 initial_size=config.decoder_initial_size,
                                  target_size=target_size,
                                  latent_dim=config.latent_dim,
                                  apply_sht=config.apply_sht)
