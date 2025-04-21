@@ -4,6 +4,7 @@ import math
 from .transformer import Encoder as TransformerLayer
 from configs.model_config import ModelConfig
 from .attention import ChannelAttention
+from .DBPN import IterativeBlock
 
 num_initial_coeff_to_stides_map = {
     25: [2, 2, 2],
@@ -139,7 +140,7 @@ class TrimLayer(nn.Module):
 class UpsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, stride=2):
         super(UpsampleLayer, self).__init__()
-        self.conv_transpose = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=stride, stride=stride)
+        self.conv_transpose = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=4, stride=stride, padding=1)
         self.gelu = nn.GELU()
         self.norm = nn.LayerNorm(out_channels)
 
@@ -187,7 +188,8 @@ class Decoder(nn.Module):
             # self.layers.append(ChannelAttention(channels=in_channels))
 
             if layer_index < num_layers - 1:
-                self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
+                # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
+                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1))
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
                 self.layers.append(Trim(model_config.target_size))
