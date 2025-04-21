@@ -14,15 +14,15 @@ num_initial_coeff_to_stides_map = {
 }
 
 lr_size_to_strides_map = {
-    27: [2, 2, 2],
-    25: [2, 2, 2],
-    18: [2, 2, 1],
-    16: [2, 2, 1],
-    9: [2, 1, 1],
-    8: [2, 1, 1],
-    5: [1, 1, 1],
-    4: [1, 1, 1],
-    3: [1, 1, 1]
+    27: [2, 2, 2, 1],
+    25: [2, 2, 2, 1],
+    18: [2, 2, 1, 1],
+    16: [2, 2, 1, 1],
+    9: [2, 1, 1, 1],
+    8: [2, 1, 1, 1],
+    5: [1, 1, 1, 1],
+    4: [1, 1, 1, 1],
+    3: [1, 1, 1, 1]
 }
 
 class Reshape(nn.Module):
@@ -87,12 +87,13 @@ class Encoder(nn.Module):
 
             # no downsampling for last layer
             if i < num_encoding_layer - 1:
-                self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=in_channels*2,
+                out_channels = min(in_channels * 2, 2048)
+                self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
                                                    stride=self.strides[i])) # downsamply by 2 if stride=2
-            in_channels *= 2
+                in_channels = out_channels
         
         output_size = self._get_output_dim(model_config.lr_size)
-        self.fc = nn.Sequential(nn.Linear(output_size * in_channels // 2, 1024),
+        self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
                                 nn.BatchNorm1d(1024),
                                 # nn.PReLU(),
                                 nn.GELU(),
