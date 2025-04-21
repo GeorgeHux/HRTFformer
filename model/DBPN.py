@@ -161,7 +161,7 @@ class IterativeBlock(nn.Module):
         l = self.down4(concat_h)
 
         concat_l = torch.cat((l, concat_l), 1)
-        h = self.up5(concat_h)
+        h = self.up5(concat_l)
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
