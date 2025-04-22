@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from .common import Reshape, Trim
+
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True, activation='gelu', norm=None):
         super(ConvBlock, self).__init__()
@@ -140,7 +142,7 @@ class IterativeBlock(nn.Module):
         self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
-        x = x.permute(0, 2, 1)
+        # x = x.permute(0, 2, 1)
         h1 = self.up1(x)
         l1 = self.down1(h1)
         h2 = self.up2(l1)
@@ -165,6 +167,52 @@ class IterativeBlock(nn.Module):
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
-        out = out.permute(0, 2, 1)
+        # out = out.permute(0, 2, 1)
 
+        return out
+    
+class D_DBPN(nn.Module):
+    def __init__(self, nbins, base_channels, latent_dim, target_size):
+        super(D_DBPN, self).__init__()
+
+        kernel = 4
+        stride = 2
+        padding = 1
+        
+        self.fc = nn.Sequential(
+            nn.Linear(latent_dim, 512*16),
+            nn.BatchNorm1d(512*16),
+            nn.ReLU(True),
+            # nn.PReLU(),
+            Reshape(-1, 512, 16),
+        )
+
+        activation = 'prelu'
+
+        self.conv0 = ConvBlock(512, base_channels, 3, 1, 1)
+
+        # Back-projection stages
+        self.up1 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up2 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up3 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up4 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up5 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up6 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        
+        # Reconstruction
+        self.out_conv = ConvBlock(base_channels, nbins, 3, 1, 1, activation=None)
+        self.trim = Trim(target_size)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = self.conv0(x)
+
+        x = self.up1(x)
+        x = self.up2(x)
+        x = self.up3(x)
+        x = self.up4(x)
+        x = self.up5(x)
+        x = self.up6(x)
+        x = self.out_conv(x)
+        out = self.trim(x)
         return out

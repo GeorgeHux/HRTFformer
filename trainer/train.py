@@ -80,7 +80,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     cudnn.benchmark = True
 
     # set lr sheduler
-    lr_scheduler = CosineAnnealingLR(optimizer, T_max=config.CosineAnnealingLR_period)
+    # lr_scheduler = CosineAnnealingLR(optimizer, T_max=config.CosineAnnealingLR_period)
 
     # loss functions
     cos_similarity_criterion = cos_similarity_loss
@@ -167,10 +167,11 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
 
-                x = recons.detach().clone()
-                y = hrtf.detach().clone()
-                spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
-                sd_loss += spectral_distorion
+            # monitor training sd
+            x = recons.detach().clone()
+            y = hrtf.detach().clone()
+            spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
+            sd_loss += spectral_distorion
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
@@ -215,7 +216,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             optimizer.zero_grad()
 
             # lr scheduler
-            lr_scheduler.step()
+            # lr_scheduler.step()
 
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")

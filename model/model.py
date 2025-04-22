@@ -4,43 +4,9 @@ import math
 from .transformer import Encoder as TransformerLayer
 from configs.model_config import ModelConfig
 from .attention import ChannelAttention
-from .DBPN import IterativeBlock
-
-num_initial_coeff_to_stides_map = {
-    25: [2, 2, 2],
-    16: [2, 2, 1],
-    9: [2, 1, 1],
-    4: [1, 1, 1],
-}
-
-initial_size_to_strides_map = {
-    864: [2, 2, 2, 2],
-    27: [2, 2, 2, 1],
-    25: [2, 2, 2, 1],
-    18: [2, 2, 1, 1],
-    16: [2, 2, 1, 1],
-    9: [2, 1, 1, 1],
-    8: [2, 1, 1, 1],
-    5: [1, 1, 1, 1],
-    4: [1, 1, 1, 1],
-    3: [1, 1, 1, 1]
-}
-
-class Reshape(nn.Module):
-    def __init__(self, *args):
-        super().__init__()
-        self.shape = args
-    
-    def forward(self, x):
-        return x.view(self.shape)
-
-class Trim(nn.Module):
-    def __init__(self, shape):
-        super().__init__()
-        self.shape = shape
-
-    def forward(self, x):
-        return x[:,:self.shape,...]
+from .res_encoder import ResBlock, ResEncoder
+from .DBPN import IterativeBlock, D_DBPN
+from .common import Reshape, Trim, initial_size_to_strides_map
 
 class DownsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, padding=1):
@@ -194,7 +160,7 @@ class Decoder(nn.Module):
                 self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1))
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
-                self.layers.append(Trim(model_config.target_size))
+                self.layers.append(Trim(model_config.target_size, dim=1))
 
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
@@ -219,3 +185,26 @@ class HRTF_Transformer(nn.Module):
         encoder_out = self.encoder(x)
         sr = self.decoder(encoder_out)
         return sr.permute(0, 2, 1)
+
+
+class AutoEncoder(nn.Module):
+    def __init__(self, nbins: int, initial_size: int, latent_dim: int, base_channels: int, target_size: int):
+        super(AutoEncoder, self).__init__()
+
+        self.encoder = ResEncoder(ResBlock, nbins, initial_size, latent_dim)
+        self.decoder = D_DBPN(nbins, base_channels=base_channels,
+                              latent_dim=latent_dim, target_size=target_size)
+        self.init_parameters()
+
+    def init_parameters(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv1d, nn.ConvTranspose1d, nn.Linear)):
+                if hasattr(m, 'weight') and m.weight is not None and m.weight.requires_grad:
+                    nn.init.kaiming_normal_(m.weight)
+                if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
+                    nn.init.constant_(m.bias, 0.0)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        out = self.decoder(z)
+        return out

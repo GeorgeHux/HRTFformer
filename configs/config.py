@@ -69,8 +69,8 @@ class Config:
         self.num_epochs = 300  # was originally 250
         self.lr = 2e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
-        self.apply_sht = False
-        self.use_mse_loss = True
+        self.apply_sht = True
+        self.use_mse_loss = False
         self.save_interval = 150
         self.CosineAnnealingLR_period = 50
 
