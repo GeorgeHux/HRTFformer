@@ -50,7 +50,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
         f.write("Training parameters:\n")
         f.write(f"Num epochs: {config.num_epochs}\n")
         f.write(f"lr: {config.lr}\n")
-        f.write(f"use mse loss: {config.use_mse_loss}")
+        f.write(f"use mse loss: {config.use_mse_loss}\n")
         f.write(f"apply sht: {config.apply_sht}\n\n")
         f.write(f"Model parameters:\n")
         f.write(f"latent dim: {config.latent_dim}\n")
@@ -156,7 +156,6 @@ def train(config: Config, model, optimizer, train_prefetcher):
                     sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
                     sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
                 recons = inverse_sht(config, sr, masks)
-                exit()
             else:
                 # lr_hrtf shape: [b, num_initial_points, nbins]
                 lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
