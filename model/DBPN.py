@@ -142,7 +142,7 @@ class IterativeBlock(nn.Module):
         self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
-        # x = x.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)
         h1 = self.up1(x)
         l1 = self.down1(h1)
         h2 = self.up2(l1)
@@ -167,7 +167,7 @@ class IterativeBlock(nn.Module):
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
-        # out = out.permute(0, 2, 1)
+        out = out.permute(0, 2, 1)
 
         return out
     

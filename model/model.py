@@ -208,3 +208,15 @@ class AutoEncoder(nn.Module):
         z = self.encoder(x)
         out = self.decoder(z)
         return out
+    
+class ResEncTranDec(nn.Module):
+    def __init__(self, encoder_config, decoder_config):
+        super(ResEncTranDec, self).__init__()
+
+        self.encoder = ResEncoder(ResBlock, encoder_config.nbins, encoder_config.initial_size, encoder_config.latent_dim)
+        self.decoder = Decoder(decoder_config)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        out = self.decoder(z)
+        return out.permute(0, 2, 1)

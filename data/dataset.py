@@ -76,7 +76,7 @@ class MergeHRTFDataset(Dataset):
                                                 self.column_angles,
                                                 self.left_hrtf.radii,
                                                 mask)
-            lr_coefficient = torch.from_numpy(lr_SHT(merge)) # [num_coefficients, nbins]
+            lr_coefficient = torch.from_numpy(lr_SHT(merge).T) # [num_coefficients, nbins]
             hr_SHT = SphericalHarmonicsTransform(self.max_degree, self.row_angles,
                                                 self.column_angles,
                                                 self.left_hrtf.radii,
