@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 from data.dataset import CUDAPrefetcher, CPUPrefetcher, MergeHRTFDataset
 from configs.config import Config
 from configs.model_config import ModelConfig
-from model.model import HRTF_Transformer, AutoEncoder, ResEncTranDec
+from model.model import HRTF_Transformer, AutoEncoder, ResEncTranDec, Encoder, Decoder
+from model.res_encoder import ResEncoder
+from model.DBPN import D_DBPN
 from data.utils import get_hrtf_loader_function
 from data.hartufo import HrirSpec
 import importlib
@@ -381,6 +383,8 @@ def get_model(config: Config):
     # hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)
 
     # model = AutoEncoder(nbins=nbins, initial_size=lr_size, latent_dim=config.latent_dim, base_channels=512, target_size=target_size).to(device)
-    model = ResEncTranDec(encoder_config, decoder_config)
+    # model = ResEncTranDec(encoder_config, decoder_config).to(device)
+    model = AutoEncoder(ResEncoder, encoder_config, Decoder, decoder_config).to(device)
+    # model = AutoEncoder(Encoder, encoder_config, D_DBPN, decoder_config).to(device)
 
     return model

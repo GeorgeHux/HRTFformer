@@ -40,9 +40,9 @@ class TransformerBlock(nn.Module):
     def forward(self, query, key, value, mask):
         attention = self.attention(query, key, value, mask)
 
-        x = self.dropout(self.norm1(attention + query))
+        x = self.norm1(query + self.dropout(attention))
         mlp_out = self.mlp(x)
-        out = self.dropout(self.norm2(mlp_out + x))
+        out = self.norm2(x + self.dropout(mlp_out))
         return out
 
 class Encoder(nn.Module):

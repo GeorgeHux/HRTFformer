@@ -145,13 +145,13 @@ class Decoder(nn.Module):
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):
-            self.layers.append(TransformerLayer(emb_size=in_channels,
-                                                hidden_size=model_config.hidden_size,
-                                                num_layers=model_config.num_transformer_layers,
-                                                num_heads=model_config.num_heads,
-                                                num_groups=model_config.num_groups,
-                                                dropout=model_config.dropout,
-                                                target_size=model_config.target_size))
+            # self.layers.append(TransformerLayer(emb_size=in_channels,
+            #                                     hidden_size=model_config.hidden_size,
+            #                                     num_layers=model_config.num_transformer_layers,
+            #                                     num_heads=model_config.num_heads,
+            #                                     num_groups=model_config.num_groups,
+            #                                     dropout=model_config.dropout,
+            #                                     target_size=model_config.target_size))
             
             # self.layers.append(ChannelAttention(channels=in_channels))
 
@@ -160,7 +160,7 @@ class Decoder(nn.Module):
                 self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1))
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
-                self.layers.append(Trim(model_config.target_size, dim=1))
+                self.layers.append(Trim(model_config.target_size, dim=-1))
 
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
@@ -168,9 +168,10 @@ class Decoder(nn.Module):
         # x = self.conv0(x)
         # x = x.permute(0, 2, 1)
         x = self.fc(x)
+        x = x.permute(0, 2, 1)
         for layer in self.layers:
             x = layer(x)
-        x = x.permute(0, 2, 1)
+        # x = x.permute(0, 2, 1)
         x = self.out_conv(x)
         x = x.permute(0, 2, 1)
         return x
@@ -187,27 +188,27 @@ class HRTF_Transformer(nn.Module):
         return sr.permute(0, 2, 1)
 
 
-class AutoEncoder(nn.Module):
-    def __init__(self, nbins: int, initial_size: int, latent_dim: int, base_channels: int, target_size: int):
-        super(AutoEncoder, self).__init__()
+# class AutoEncoder(nn.Module):
+#     def __init__(self, nbins: int, initial_size: int, latent_dim: int, base_channels: int, target_size: int):
+#         super(AutoEncoder, self).__init__()
 
-        self.encoder = ResEncoder(ResBlock, nbins, initial_size, latent_dim)
-        self.decoder = D_DBPN(nbins, base_channels=base_channels,
-                              latent_dim=latent_dim, target_size=target_size)
-        self.init_parameters()
+#         self.encoder = ResEncoder(ResBlock, nbins, initial_size, latent_dim)
+#         self.decoder = D_DBPN(nbins, base_channels=base_channels,
+#                               latent_dim=latent_dim, target_size=target_size)
+#         self.init_parameters()
 
-    def init_parameters(self):
-        for m in self.modules():
-            if isinstance(m, (nn.Conv1d, nn.ConvTranspose1d, nn.Linear)):
-                if hasattr(m, 'weight') and m.weight is not None and m.weight.requires_grad:
-                    nn.init.kaiming_normal_(m.weight)
-                if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
-                    nn.init.constant_(m.bias, 0.0)
+#     def init_parameters(self):
+#         for m in self.modules():
+#             if isinstance(m, (nn.Conv1d, nn.ConvTranspose1d, nn.Linear)):
+#                 if hasattr(m, 'weight') and m.weight is not None and m.weight.requires_grad:
+#                     nn.init.kaiming_normal_(m.weight)
+#                 if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
+#                     nn.init.constant_(m.bias, 0.0)
 
-    def forward(self, x):
-        z = self.encoder(x)
-        out = self.decoder(z)
-        return out
+#     def forward(self, x):
+#         z = self.encoder(x)
+#         out = self.decoder(z)
+#         return out
     
 class ResEncTranDec(nn.Module):
     def __init__(self, encoder_config, decoder_config):
@@ -220,3 +221,39 @@ class ResEncTranDec(nn.Module):
         z = self.encoder(x)
         out = self.decoder(z)
         return out.permute(0, 2, 1)
+
+class TranEncDbpnDec(nn.Module):
+    def __init__(self, encoder_config, decoder_config) -> None:
+        super().__init__()
+
+        self.encoder = Encoder(encoder_config)
+        self.decoder = D_DBPN(decoder_config.nbins, 512, decoder_config.latent_dim, decoder_config.target.size)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        out = self.decoder(z)
+        return out
+
+class AutoEncoder(nn.Module):
+    def __init__(self, encoder_cls, encoder_config, decoder_cls, decoder_config) -> None:
+        super().__init__()
+        self.encoder = encoder_cls(encoder_config)
+        self.decoder = decoder_cls(decoder_config)
+        self.init_parameters()
+    
+    def init_parameters(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv1d, nn.ConvTranspose1d, nn.Linear)):
+                if hasattr(m, 'weight') and m.weight is not None and m.weight.requires_grad:
+                    nn.init.kaiming_normal_(m.weight)
+                if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
+                    nn.init.constant_(m.bias, 0.0)
+
+    def forward(self, x):
+        if isinstance(self.encoder, ResEncoder):
+            x = x.permute(0, 2, 1)
+        z = self.encoder(x)
+        out = self.decoder(z)
+        if isinstance(self.decoder, Decoder):
+            out = out.permute(0, 2, 1)
+        return out

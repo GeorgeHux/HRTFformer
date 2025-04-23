@@ -1,6 +1,7 @@
 import torch.nn as nn
 
 from .common import initial_size_to_strides_map
+from configs.model_config import ModelConfig
 
 class ResBlock(nn.Module):
     def __init__(self, in_channnels, out_channels, stride=1, expansion=1, identity_downsample=None):
@@ -34,11 +35,15 @@ class ResBlock(nn.Module):
         return x
     
 class ResEncoder(nn.Module):
-    def __init__(self, block, nbins: int, initial_size: int, latent_dim: int):
+    def __init__(self, encoder_config):
         super(ResEncoder, self).__init__()
         num_blocks = 2
         self.expansion = 1
         self.in_channels = 256
+        nbins = encoder_config.nbins
+        latent_dim = encoder_config.latent_dim
+        initial_size = encoder_config.initial_size
+        block = ResBlock
         self.conv1 = nn.Sequential(
             nn.Conv1d(nbins, self.in_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(self.in_channels),

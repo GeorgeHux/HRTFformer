@@ -18,7 +18,7 @@ class GroupedQueryAttention(nn.Module):
         assert num_heads % num_groups == 0, "num_heads must be divisible by num_groups"
         self.num_heads = num_heads
         self.num_groups = num_groups
-        self.num_kv_hedas = num_heads // num_groups
+        self.num_kv_heads = num_heads // num_groups
         self.head_dim = hidden_size // num_heads
         assert self.head_dim * num_heads == hidden_size, "hidden_size must be divisible by num_heads"
 
@@ -64,7 +64,7 @@ class GroupedQueryAttention(nn.Module):
         scores = einsum(query, key, "b g h sq d, b g sk d -> b g h sq sk")
 
         # add relative position bias
-        relative_pos_bias = self.relative_pos_bias(q_len, k_len).view(1, self.num_groups, self.num_kv_hedas, q_len, k_len)
+        relative_pos_bias = self.relative_pos_bias(q_len, k_len).view(1, self.num_groups, self.num_kv_heads, q_len, k_len)
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float("-1e20"))
         attention = torch.softmax(scores / (scale) + relative_pos_bias, dim=-1) # [b, group, head_per_group, q_len, k_len]
