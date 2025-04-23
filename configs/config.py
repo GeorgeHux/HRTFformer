@@ -73,16 +73,17 @@ class Config:
         self.use_mse_loss = False
         self.save_interval = 150
         self.CosineAnnealingLR_period = 50
+        self.norm_type = "batch"
 
         # model parameters
         self.latent_dim = 256
         self.lr_pad_idx=0
-        self.hidden_size = 4096
-        self.num_encoder_transformer_layers = 2
-        self.num_decoder_transformer_layers = 8
-        self.decoder_initial_size = 4
-        self.num_heads = 32
-        self.num_groups = 8
+        self.hidden_size = 1024
+        self.num_encoder_transformer_layers = 1
+        self.num_decoder_transformer_layers = 1
+        self.decoder_initial_size = 16
+        self.num_heads = 8
+        self.num_groups = 2
         self.dropout = 0.
 
         # Loss function weight

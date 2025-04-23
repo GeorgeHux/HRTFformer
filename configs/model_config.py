@@ -12,3 +12,4 @@ class ModelConfig:
     target_size: int
     latent_dim: int
     apply_sht: bool
+    norm_type: str

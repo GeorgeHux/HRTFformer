@@ -2,21 +2,25 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 from .attention import GroupedQueryAttention
-from .normalization import RMSNorm
+from .normalization import RMSNorm, CustomizedNormalization
 
 class TransformerBlock(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_heads, num_groups, dropout=0., target_size=484):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", dropout=0., target_size=484):
         super(TransformerBlock, self).__init__()
         """
         Args:
             target_size: used for position embedding
         """
         self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
-        # self.norm1 = RMSNorm(emb_size)
-        # self.norm2 = RMSNorm(emb_size)
-        # self.norm1 = nn.LayerNorm(emb_size)
-        # self.norm2 = nn.LayerNorm(emb_size)
-
+        if norm_type == "rms_norm":
+            self.norm1 = RMSNorm(emb_size)
+            self.norm2 = RMSNorm(emb_size)
+        elif norm_type == "layer_norm":
+            self.norm1 = nn.LayerNorm(emb_size)
+            self.norm2 = nn.LayerNorm(emb_size)
+        else:
+            self.norm1 = CustomizedNormalization(norm_type, emb_size)
+            self.norm2 = CustomizedNormalization(norm_type, emb_size)
         
         self.mlp = nn.Sequential(
             nn.Linear(emb_size, emb_size * 4),
@@ -40,15 +44,15 @@ class TransformerBlock(nn.Module):
     def forward(self, query, key, value, mask):
         attention = self.attention(query, key, value, mask)
 
-        # x = self.norm1(query + self.dropout(attention))
-        x = query + self.dropout(attention)
+        x = self.norm1(query + self.dropout(attention))
+        # x = query + self.dropout(attention)
         mlp_out = self.mlp(x)
-        # out = self.norm2(x + self.dropout(mlp_out))
-        out = x + self.dropout(mlp_out)
+        out = self.norm2(x + self.dropout(mlp_out))
+        # out = x + self.dropout(mlp_out)
         return out
 
 class Encoder(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, dropout, target_size) -> None:
+    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, norm_type, dropout, target_size) -> None:
         super().__init__()
         self.layers = nn.ModuleList(
             [
@@ -57,6 +61,7 @@ class Encoder(nn.Module):
                     hidden_size,
                     num_heads,
                     num_groups,
+                    norm_type,
                     dropout,
                     target_size
                 )

@@ -24,6 +24,22 @@ class DualEarNormalization(nn.Module):
         return torch.cat([left, right], dim=-1)
 
 
+class CustomizedNormalization(nn.Module):
+    def __init__(self, norm_type, channels):
+        super().__init__()
+        if norm_type == "instance":
+            self.norm = nn.InstanceNorm1d(channels)
+        elif norm_type == "batch":
+            self.norm = nn.BatchNorm1d(channels)
+        else:
+            raise ValueError(f"unrecognized normalization: {norm_type}")
+    
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        x = self.norm(x)
+        x = x.permute(0, 2, 1)
+        return x
+
 if __name__ == "__main__":
     x = torch.randn(1, 138, 128)
     norm = RMSNorm(128)
@@ -33,4 +49,15 @@ if __name__ == "__main__":
     x = torch.randn(2, 18, 256)
     dual_ear_norm = DualEarNormalization(256)
     x = dual_ear_norm(x)
+    print(x.shape)
+
+    x = torch.randn(3, 27, 128)
+    norm_type = "instance"
+    norm = CustomizedNormalization(norm_type, 128)
+    x = norm(x)
+    print(x.shape)
+
+    norm_type = "batch"
+    norm = CustomizedNormalization(norm_type, 128)
+    x = norm(x)
     print(x.shape)

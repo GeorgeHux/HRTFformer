@@ -366,7 +366,8 @@ def get_model(config: Config):
                                  initial_size=lr_size,
                                  target_size=target_size,
                                  latent_dim=config.latent_dim,
-                                 apply_sht=config.apply_sht)
+                                 apply_sht=config.apply_sht,
+                                 norm_type=config.norm_type)
     
     decoder_config = ModelConfig(nbins=nbins,
                                  hidden_size=config.hidden_size,
@@ -377,7 +378,8 @@ def get_model(config: Config):
                                  initial_size=config.decoder_initial_size,
                                  target_size=target_size,
                                  latent_dim=config.latent_dim,
-                                 apply_sht=config.apply_sht)
+                                 apply_sht=config.apply_sht,
+                                 norm_type=config.norm_type)
     
     # model initialization
     # hrtf_transformer = HRTF_Transformer(encoder_config, decoder_config).to(device)

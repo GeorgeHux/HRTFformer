@@ -150,6 +150,7 @@ class Decoder(nn.Module):
                                                 num_layers=model_config.num_transformer_layers,
                                                 num_heads=model_config.num_heads,
                                                 num_groups=model_config.num_groups,
+                                                norm_type=model_config.norm_type,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
             
