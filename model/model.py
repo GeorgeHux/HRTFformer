@@ -141,26 +141,26 @@ class Decoder(nn.Module):
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
             # 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
-            out_channels = [512, 512, 512, 512, 512, 512, 512, 512]
+            out_channels = [512, 512, 512, 512, 512, 512]
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):
-            # self.layers.append(TransformerLayer(emb_size=in_channels,
-            #                                     hidden_size=model_config.hidden_size,
-            #                                     num_layers=model_config.num_transformer_layers,
-            #                                     num_heads=model_config.num_heads,
-            #                                     num_groups=model_config.num_groups,
-            #                                     dropout=model_config.dropout,
-            #                                     target_size=model_config.target_size))
+            self.layers.append(TransformerLayer(emb_size=in_channels,
+                                                hidden_size=model_config.hidden_size,
+                                                num_layers=model_config.num_transformer_layers,
+                                                num_heads=model_config.num_heads,
+                                                num_groups=model_config.num_groups,
+                                                dropout=model_config.dropout,
+                                                target_size=model_config.target_size))
             
             # self.layers.append(ChannelAttention(channels=in_channels))
 
             if layer_index < num_layers - 1:
                 # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
-                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1))
+                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, input_shape_layout='bsc'))
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
-                self.layers.append(Trim(model_config.target_size, dim=-1))
+                self.layers.append(Trim(model_config.target_size, dim=1))
 
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
@@ -168,10 +168,9 @@ class Decoder(nn.Module):
         # x = self.conv0(x)
         # x = x.permute(0, 2, 1)
         x = self.fc(x)
-        x = x.permute(0, 2, 1)
         for layer in self.layers:
             x = layer(x)
-        # x = x.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)
         x = self.out_conv(x)
         x = x.permute(0, 2, 1)
         return x

@@ -12,8 +12,8 @@ class TransformerBlock(nn.Module):
             target_size: used for position embedding
         """
         self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
-        self.norm1 = RMSNorm(emb_size)
-        self.norm2 = RMSNorm(emb_size)
+        # self.norm1 = RMSNorm(emb_size)
+        # self.norm2 = RMSNorm(emb_size)
         # self.norm1 = nn.LayerNorm(emb_size)
         # self.norm2 = nn.LayerNorm(emb_size)
 
@@ -40,9 +40,11 @@ class TransformerBlock(nn.Module):
     def forward(self, query, key, value, mask):
         attention = self.attention(query, key, value, mask)
 
-        x = self.norm1(query + self.dropout(attention))
+        # x = self.norm1(query + self.dropout(attention))
+        x = query + self.dropout(attention)
         mlp_out = self.mlp(x)
-        out = self.norm2(x + self.dropout(mlp_out))
+        # out = self.norm2(x + self.dropout(mlp_out))
+        out = x + self.dropout(mlp_out)
         return out
 
 class Encoder(nn.Module):
