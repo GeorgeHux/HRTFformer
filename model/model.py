@@ -158,7 +158,7 @@ class Decoder(nn.Module):
 
             if layer_index < num_layers - 1:
                 # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
-                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, input_shape_layout='bsc'))
+                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
                 in_channels = out_channels[layer_index]
             if layer_index == num_layers - 2:
                 self.layers.append(Trim(model_config.target_size, dim=1))

@@ -200,21 +200,22 @@ def train(config: Config, model, optimizer, train_prefetcher):
             
             # backward
             loss.backward()
-
-            total_norm = torch.nn.utils.clip_grad_norm_(
-                model.parameters(),
-                max_norm=10.0,
-                norm_type=2
-            )
+            
+            # gradient clipping
+            # total_norm = torch.nn.utils.clip_grad_norm_(
+            #     model.parameters(),
+            #     max_norm=10.0,
+            #     norm_type=2
+            # )
 
             # compute grad norm
-            # total_norm = 0
-            # for p in model.parameters():
-            #     if p.grad is not None:
-            #         param_norm = p.grad.data.norm(2)
-            #         total_norm += param_norm.item() ** 2
-            # total_norm = total_norm ** 0.5
-            grad_norm_list.append(total_norm.item())
+            total_norm = 0
+            for p in model.parameters():
+                if p.grad is not None:
+                    param_norm = p.grad.data.norm(2)
+                    total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            grad_norm_list.append(total_norm)
             # print(f'Total gradient norm: {total_norm}')
 
             # optimizer

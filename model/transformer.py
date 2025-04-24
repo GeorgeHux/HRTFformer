@@ -24,8 +24,9 @@ class TransformerBlock(nn.Module):
         
         self.mlp = nn.Sequential(
             nn.Linear(emb_size, emb_size * 4),
-            # nn.PReLU(),
-            nn.GELU(),
+            nn.PReLU(),
+            # nn.GELU(),
+            # nn.ReLU(),
             nn.Linear(emb_size * 4, emb_size)
         )
 
