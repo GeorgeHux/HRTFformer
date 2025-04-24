@@ -201,14 +201,20 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # backward
             loss.backward()
 
+            total_norm = torch.nn.utils.clip_grad_norm_(
+                model.parameters(),
+                max_norm=10.0,
+                norm_type=2
+            )
+
             # compute grad norm
-            total_norm = 0
-            for p in model.parameters():
-                if p.grad is not None:
-                    param_norm = p.grad.data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            grad_norm_list.append(total_norm)
+            # total_norm = 0
+            # for p in model.parameters():
+            #     if p.grad is not None:
+            #         param_norm = p.grad.data.norm(2)
+            #         total_norm += param_norm.item() ** 2
+            # total_norm = total_norm ** 0.5
+            grad_norm_list.append(total_norm.item())
             # print(f'Total gradient norm: {total_norm}')
 
             # optimizer
@@ -221,7 +227,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             with open(log_file_path, "a") as f:
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
-                f.write(f"grad_norm: {grad_norm_list[-1]}")
+                f.write(f"grad_norm: {grad_norm_list[-1]}\n")
                 f.write(f"sd: {spectral_distorion}")
                 if config.apply_sht and not config.use_mse_loss:
                     f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
