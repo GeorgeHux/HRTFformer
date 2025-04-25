@@ -275,6 +275,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
 
         if train_loss_list[-1] < min_loss:
             msg = f"better result obtained, new checkpoint saved at epoch {epoch}, cur: {train_loss_list[-1]}, prev: {min_loss}"
+            print(msg)
             min_loss = train_loss_list[-1]
             with open(log_file_path, "a") as f:
                 f.write(msg)
