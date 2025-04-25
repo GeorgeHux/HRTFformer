@@ -110,6 +110,9 @@ def train(config: Config, model, optimizer, train_prefetcher):
         train_sh_coeff_mse_list = []
         train_sh_coeff_cos_list = []
 
+    # initialize min_loss
+    min_loss = float('inf')
+
     for epoch in range(config.num_epochs):
         with open(log_file_path, "a") as f:
             f.write(f"\nEpoch: {epoch}\n")
@@ -246,8 +249,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # Every 0th batch log useful metrics
             if batch_index == 0:
                 with torch.no_grad():
-                    if epoch % config.save_interval == 0 or epoch == (config.num_epochs - 1):
-                        torch.save(model.state_dict(), f'{checkpoint_dir}/transformer_{epoch}.pt')
+                    # if epoch % config.save_interval == 0 or epoch == (config.num_epochs - 1):
+                    #     torch.save(model.state_dict(), f'{checkpoint_dir}/transformer_{epoch}.pt')
                     progress(batch_index, batches, epoch, config.num_epochs, timed=np.mean(times))
                     times = []
 
@@ -269,7 +272,13 @@ def train(config: Config, model, optimizer, train_prefetcher):
         if config.apply_sht and not config.use_mse_loss:
             print(f"Average content loss: {train_content_loss_list[-1]}")
             print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
-    
+
+        if train_loss_list[-1] < min_loss:
+            msg = f"better result obtained, new checkpoint saved at epoch {epoch}, cur: {train_loss_list[-1]}, prev: {min_loss}"
+            min_loss = train_loss_list[-1]
+            with open(log_file_path, "a") as f:
+                f.write(msg)
+            torch.save(model.state_dict(), f'{checkpoint_dir}/transformer.pt')
     # plot loss curves
     plot_path = os.path.join(plot_dir, "losses")
     os.makedirs(plot_path, exist_ok=True)
