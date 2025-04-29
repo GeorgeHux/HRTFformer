@@ -434,7 +434,7 @@ def neighbor_dissim_metric(recons, target, reduction='mean', domain="magnitude")
         target_mag = 10 ** (target / 20)
     recons_mag = F.pad(recons_mag, (0,0,1,1,0,0), mode='circular')
     target_mag = F.pad(target_mag, (0,0,1,1,0,0), mode='circular')
-    r, w, h = recons.shape[-3:] # 1, 74, 12
+    r, w, h = recons_mag.shape[-3:] # 1, 74, 12
     total_positions = r * (w-2) * (h-2)
 
     def compute_diff(hrtf):
