@@ -37,6 +37,7 @@ class Config:
             self.data_dir_path = 'C:/Users/steph/Desktop/XuyiHu/output'
             # self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu')
             self.raw_hrtf_dir = Path('C:/Users/steph/Desktop/XuyiHu/HRTF Datasets')
+            self.amt_dir = 'C:/Users/steph/Desktop/XuyiHu/amtoolbox-full-1.4.0'
         else:
             self.data_dir_path = '/Users/lijian/Downloads/shtHRTF'
             self.raw_hrtf_dir = Path('/Users/lijian/Downloads')
@@ -113,4 +114,27 @@ class Config:
 
     def get_train_params(self):
         # deprecated
-        return self.batch_size, self.latent_dim, self.max_degree
+        params = {
+            "domain": {self.domain},
+            "max sht degree": {self.max_degree},
+            "max num points": {self.max_num_points},
+            "hrtf loader": {self.hrtf_loader},
+            "data path": {self.raw_hrtf_dir},
+            "batch size": {self.batch_size},
+            "initial points": {self.num_initial_points},
+            "optimizer": {self.optimizer},
+            "epochs": {self.num_epochs},
+            "lr": {self.lr},
+            "sht": {self.apply_sht},
+            "mse loss": {self.use_mse_loss},
+            "latent dim": {self.latent_dim},
+            "hidden size": {self.hidden_size},
+            "encoder layer": {self.num_encoder_transformer_layers},
+            "decoder layer": {self.num_decoder_transformer_layers},
+            "decoder initial size": {self.decoder_initial_size},
+            "num heads": {self.num_heads},
+            "num groups": {self.num_groups},
+            "dropout": {self.dropout},
+            "norm type": {self.norm_type}
+        }
+        return params
