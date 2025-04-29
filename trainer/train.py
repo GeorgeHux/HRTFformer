@@ -186,7 +186,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 plot_hrtf(generated.detach().cpu(), target.detach().cpu(), plot_dir, filename)
 
             # loss
-            neighbor_dissim_loss = neighbor_dissim_metric(recons, target, domain=config.domain)
+            neighbor_dissim_loss = neighbor_dissim_metric(recons, hrtf, domain=config.domain)
             neighbor_loss += neighbor_dissim_loss.item()
             if config.use_mse_loss:
                 loss = mse_loss_fn(recons, hrtf) * config.mse_scale
