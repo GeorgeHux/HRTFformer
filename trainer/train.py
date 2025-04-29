@@ -176,6 +176,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             x = recons.detach().clone()
             y = hrtf.detach().clone()
             spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
+            sd_loss += spectral_distorion
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
             if epoch % 25 == 0 or epoch == (config.num_epochs - 1):
