@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from data.dataset import CUDAPrefetcher, CPUPrefetcher, MergeHRTFDataset
 from configs.config import Config
 from configs.model_config import ModelConfig
-from model.model import HRTF_Transformer, AutoEncoder, ResEncTranDec, Encoder, Decoder
+from model.model import HRTF_Transformer, AutoEncoder, Encoder, Decoder
 from model.res_encoder import ResEncoder
 from model.DBPN import D_DBPN
 from data.utils import get_hrtf_loader_function
@@ -390,3 +390,74 @@ def get_model(config: Config):
     # model = AutoEncoder(Encoder, encoder_config, D_DBPN, decoder_config).to(device)
 
     return model
+
+def magnitude_neighbor_dissim_loss(recons, target, reduction='mean'):
+    # straight forward version of neighor dissmiliarity loss, but not efficient
+    recons = F.pad(recons, pad=(0,0,1,1,0,0), mode='circular')
+    target = F.pad(target, pad=(0,0,1,1,0,0), mode='circular')
+    r, w, h = recons.shape[-3:] # 74, 12
+    total_loss = 0.
+    total_positions = r * (w-2) * (h-2)
+
+    def compute_neighbor_diff(hrtf, center):
+        # expected input shape: [b nbins r w h]
+        # center: (x, y)
+        x, y = center
+        # diff = 0
+        # for offset_w, offset_h in [(0,1), (0,-1), (1,0), (-1,0)]:
+        #     diff += hrtf[...,x,y] - hrtf[..., x + offset_w, y + offset_h]
+
+        offsets = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        neighbors = torch.stack([hrtf[...,x+offset_w, y+offset_h] for offset_w, offset_h in offsets], dim=0)
+        avg_neighbors = torch.mean(neighbors, dim=0)
+
+        return hrtf[...,x,y] - avg_neighbors
+    
+    for i in range(1, w-1):
+        for j in range(1, h-1):
+            deriv_recons = compute_neighbor_diff(recons, (i, j))
+            deriv_target = compute_neighbor_diff(target, (i, j))
+            total_loss += torch.mean((deriv_recons - deriv_target) ** 2, dim=(1,2)) # average over frequency dim, get rid of radius dim
+    neighbor_dissim_loss = total_loss / total_positions
+    print(neighbor_dissim_loss.shape)
+    if reduction == 'mean':
+        output_loss = torch.mean(neighbor_dissim_loss)
+    elif reduction == 'sum':
+        output_loss = torch.sum(neighbor_dissim_loss)
+    else:
+        raise RuntimeError("Please specify a valid method for reduction (either 'mean' or 'sum').")
+    return output_loss
+
+def neighbor_dissim_metric(recons, target, reduction='mean', domain="magnitude"):
+    if domain == "magnitude_db":
+        recons_mag = 10 ** (recons / 20)
+        target_mag = 10 ** (target / 20)
+    recons_mag = F.pad(recons_mag, (0,0,1,1,0,0), mode='circular')
+    target_mag = F.pad(target_mag, (0,0,1,1,0,0), mode='circular')
+    r, w, h = recons.shape[-3:] # 1, 74, 12
+    total_positions = r * (w-2) * (h-2)
+
+    def compute_diff(hrtf):
+        unfolded = F.unfold(hrtf.reshape(-1, r, w, h),
+                            kernel_size=3,
+                            padding=0,
+                            stride=1) # [b*nbins, 9, n_patches]
+        
+        center = unfolded[:, 4:5, :] # [b*nbins, 1, n_patches]
+        neighbors = unfolded[:, [1,3,5,7], :] # [b*nbins, 4, n_patches]
+        avg_neighbors = torch.mean(neighbors, dim=1, keepdim=True)
+
+        diff = center - avg_neighbors
+        return diff.reshape(hrtf.shape[0], hrtf.shape[1], -1)
+    
+    diff_recons = compute_diff(recons_mag)
+    diff_target = compute_diff(target_mag)
+
+    loss = torch.sum(torch.mean((diff_recons - diff_target) ** 2, dim=1))
+    loss /= total_positions
+    if reduction == 'mean':
+        return loss / recons.shape[0]
+    elif reduction == 'sum':
+        return loss
+    else:
+        raise RuntimeError("Please specify a valid method for reduction (either 'mean' or 'sum').")

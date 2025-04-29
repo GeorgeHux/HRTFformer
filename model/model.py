@@ -63,8 +63,8 @@ class Encoder(nn.Module):
         output_size = self._get_output_dim(initial_size)
         self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
                                 nn.BatchNorm1d(1024),
-                                # nn.PReLU(),
-                                nn.GELU(),
+                                nn.PReLU(),
+                                # nn.GELU(),
                                 nn.Linear(1024, model_config.latent_dim))
         self.latent_conv = nn.Sequential(
             nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
@@ -88,7 +88,8 @@ class Encoder(nn.Module):
             x = layer(x)
         # x = x.permute(0, 2, 1)
         # x = self.latent_conv(x)
-        x = x.view(x.shape[0], -1)
+        # x = x.view(x.shape[0], -1)
+        x = x.reshape(x.shape[0], -1)
         x = self.fc(x)
         return x
 
@@ -173,7 +174,6 @@ class Decoder(nn.Module):
             x = layer(x)
         x = x.permute(0, 2, 1)
         x = self.out_conv(x)
-        x = x.permute(0, 2, 1)
         return x
 
 class HRTF_Transformer(nn.Module):
@@ -187,52 +187,6 @@ class HRTF_Transformer(nn.Module):
         sr = self.decoder(encoder_out)
         return sr.permute(0, 2, 1)
 
-
-# class AutoEncoder(nn.Module):
-#     def __init__(self, nbins: int, initial_size: int, latent_dim: int, base_channels: int, target_size: int):
-#         super(AutoEncoder, self).__init__()
-
-#         self.encoder = ResEncoder(ResBlock, nbins, initial_size, latent_dim)
-#         self.decoder = D_DBPN(nbins, base_channels=base_channels,
-#                               latent_dim=latent_dim, target_size=target_size)
-#         self.init_parameters()
-
-#     def init_parameters(self):
-#         for m in self.modules():
-#             if isinstance(m, (nn.Conv1d, nn.ConvTranspose1d, nn.Linear)):
-#                 if hasattr(m, 'weight') and m.weight is not None and m.weight.requires_grad:
-#                     nn.init.kaiming_normal_(m.weight)
-#                 if hasattr(m, 'bias') and m.bias is not None and m.bias.requires_grad:
-#                     nn.init.constant_(m.bias, 0.0)
-
-#     def forward(self, x):
-#         z = self.encoder(x)
-#         out = self.decoder(z)
-#         return out
-    
-class ResEncTranDec(nn.Module):
-    def __init__(self, encoder_config, decoder_config):
-        super(ResEncTranDec, self).__init__()
-
-        self.encoder = ResEncoder(ResBlock, encoder_config.nbins, encoder_config.initial_size, encoder_config.latent_dim)
-        self.decoder = Decoder(decoder_config)
-
-    def forward(self, x):
-        z = self.encoder(x)
-        out = self.decoder(z)
-        return out.permute(0, 2, 1)
-
-class TranEncDbpnDec(nn.Module):
-    def __init__(self, encoder_config, decoder_config) -> None:
-        super().__init__()
-
-        self.encoder = Encoder(encoder_config)
-        self.decoder = D_DBPN(decoder_config.nbins, 512, decoder_config.latent_dim, decoder_config.target.size)
-
-    def forward(self, x):
-        z = self.encoder(x)
-        out = self.decoder(z)
-        return out
 
 class AutoEncoder(nn.Module):
     def __init__(self, encoder_cls, encoder_config, decoder_cls, decoder_config) -> None:
@@ -254,6 +208,4 @@ class AutoEncoder(nn.Module):
             x = x.permute(0, 2, 1)
         z = self.encoder(x)
         out = self.decoder(z)
-        if isinstance(self.decoder, Decoder):
-            out = out.permute(0, 2, 1)
         return out
