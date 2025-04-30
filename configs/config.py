@@ -86,6 +86,7 @@ class Config:
         self.num_groups = 2
         self.dropout = 0.1
         self.norm_type = "instance"
+        self.activation = "prelu"
 
         # Loss function weight
         self.content_weight = 1

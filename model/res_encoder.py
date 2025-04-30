@@ -1,7 +1,6 @@
 import torch.nn as nn
 
 from .common import initial_size_to_strides_map
-from configs.model_config import ModelConfig
 
 class ResBlock(nn.Module):
     def __init__(self, in_channnels, out_channels, stride=1, expansion=1, identity_downsample=None):
@@ -52,30 +51,6 @@ class ResEncoder(nn.Module):
         res_layers = []
         # strides for downsampling layers
         self.strides = initial_size_to_strides_map[initial_size]
-        # if degree == 19:
-        #     strides = [2, 2, 2, 2]
-        #     feature = 25
-        # elif degree == 13:
-        #     strides = [2, 2, 2, 1]
-        #     feature = 25
-        # elif degree == 9:
-        #     strides = [2, 2, 1, 1]
-        #     feature = 25
-        # elif degree == 6:
-        #     strides = [2, 1, 1, 1]
-        #     feature = 25
-        # elif degree == 4: # 32
-        #     strides = [2, 2, 2, 1, 1]
-        #     feature = 4
-        # elif degree == 3: # 48
-        #     strides = [2, 1, 1, 1, 1]
-        #     feature = 8
-        # elif degree == 2: # 72
-        #     strides = [2, 1, 1, 1]
-        #     feature = 5
-        # elif degree == 1: # 108， 216，
-        #     strides = [1, 1, 1, 1]
-        #     feature = 4
 
         res_layers.append(self._make_layer(block, 256, num_blocks))
         for stride in self.strides:

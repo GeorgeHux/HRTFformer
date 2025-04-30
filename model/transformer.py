@@ -5,7 +5,7 @@ from .attention import GroupedQueryAttention
 from .normalization import RMSNorm, CustomizedNormalization
 
 class TransformerBlock(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", dropout=0., target_size=484):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
         super(TransformerBlock, self).__init__()
         """
         Args:
@@ -24,16 +24,14 @@ class TransformerBlock(nn.Module):
         
         self.mlp = nn.Sequential(
             nn.Linear(emb_size, emb_size * 4),
-            nn.PReLU(),
-            # nn.GELU(),
-            # nn.ReLU(),
+            self._get_activation(activation),
             nn.Linear(emb_size * 4, emb_size)
         )
 
         self.dropout = nn.Dropout(dropout)
 
         # Initialize parameters
-        self._init_mlp_weights()
+        # self._init_mlp_weights()
     
     def _init_mlp_weights(self):
         for layer in self.mlp:
@@ -41,6 +39,16 @@ class TransformerBlock(nn.Module):
                 init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
                     init.zeros_(layer.bias)
+
+    def _get_activation(self, activation):
+        if activation == "prelu":
+            return nn.PReLU()
+        elif activation == "gelu":
+            return nn.GELU()
+        elif activation == "relu":
+            return nn.ReLU()
+        else:
+            raise ValueError(f"Unknown activation function: {activation}")
 
     def forward(self, query, key, value, mask):
         attention = self.attention(query, key, value, mask)
@@ -53,7 +61,7 @@ class TransformerBlock(nn.Module):
         return out
 
 class Encoder(nn.Module):
-    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, norm_type, dropout, target_size) -> None:
+    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, norm_type, activation, dropout, target_size) -> None:
         super().__init__()
         self.layers = nn.ModuleList(
             [
@@ -63,6 +71,7 @@ class Encoder(nn.Module):
                     num_heads,
                     num_groups,
                     norm_type,
+                    activation,
                     dropout,
                     target_size
                 )

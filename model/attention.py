@@ -70,7 +70,9 @@ class GroupedQueryAttention(nn.Module):
         attention = torch.softmax(scores / (scale) + relative_pos_bias, dim=-1) # [b, group, head_per_group, q_len, k_len]
         attention = self.dropout(attention)
 
-        out = einsum(attention, value, "b g h sq sk, b g sv d -> b sq g h d").reshape(b, q_len, -1) # sk = sv
+        # out = einsum(attention, value, "b g h sq sk, b g sv d -> b sq g h d").reshape(b, q_len, -1) # sk = sv
+        out = einsum(attention, value, "b g h sq sk, b g sv d -> b g h sq d")
+        out = rearrange(out, "b g h sq d -> b sq (g h d)").contiguous()
         out = self.out_proj(out) # [b, q_len, emb_size]
         return out
 

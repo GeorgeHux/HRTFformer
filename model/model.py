@@ -48,6 +48,7 @@ class Encoder(nn.Module):
                                                 num_heads=model_config.num_heads,
                                                 num_groups=model_config.num_groups,
                                                 norm_type=model_config.norm_type,
+                                                activation=model_config.activation,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
             
@@ -153,6 +154,7 @@ class Decoder(nn.Module):
                                                 num_heads=model_config.num_heads,
                                                 num_groups=model_config.num_groups,
                                                 norm_type=model_config.norm_type,
+                                                activation=model_config.activation,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
             

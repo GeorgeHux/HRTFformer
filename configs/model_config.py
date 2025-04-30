@@ -13,3 +13,4 @@ class ModelConfig:
     latent_dim: int
     apply_sht: bool
     norm_type: str
+    activation: str
