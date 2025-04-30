@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 from .attention import GroupedQueryAttention
-from .normalization import RMSNorm, CustomizedNormalization
+from .normalization import RMSNorm, CustomizedNormalization, TokenScaling
 
 class TransformerBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
@@ -18,6 +18,9 @@ class TransformerBlock(nn.Module):
         elif norm_type == "layer_norm":
             self.norm1 = nn.LayerNorm(emb_size)
             self.norm2 = nn.LayerNorm(emb_size)
+        elif norm_type == "token_scale":
+            self.norm1 = TokenScaling()
+            self.norm2 = TokenScaling()
         else:
             self.norm1 = CustomizedNormalization(norm_type, emb_size)
             self.norm2 = CustomizedNormalization(norm_type, emb_size)

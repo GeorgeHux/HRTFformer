@@ -16,6 +16,8 @@ import numpy as np
 from data.dataset import get_sample_coords
 from data.utils import get_dataset_info
 
+import matlab.engine
+
 def replace_nodes(config: Config, sr_dir, file_name):
     with open(config.valid_target_path + file_name, "rb") as f:
         hr_hrtf = pickle.load(f).permute(1, 2, 0, 3)  # r x w x h x nbins -> w x h x r x nbins
@@ -67,6 +69,8 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
             subject_id = ''.join(re.findall(r'\d+', file_name))
             lsd_errors.append([subject_id,  float(error.detach())])
             print('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
+            with open(f'{sr_dir}/log.txt', 'a') as f:
+                f.write('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
 
         # with open(f'{config.valid_recon_path}/{config.upscale_factor}/mag/{file_ext}', "wb") as file:
         # with open(f'{config.path}/{config.upscale_factor}/{file_ext}', "wb") as file:
@@ -77,14 +81,7 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
         f.write('Mean LSD Error: %0.3f \n' % np.mean([error[1] for error in lsd_errors]))
     
 
-def run_localisation_evaluation(config, sr_dir, file_ext=None, hrtf_selection=None):
-    # imp = importlib.import_module('data.hrtfdata.full')
-    # load_function = getattr(imp, config.dataset)
-    # data_dir = config.raw_hrtf_dir / config.dataset
-    # ds = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 
-    #                                                      'side': 'left', 'domain': 'magnitude'}}, subject_ids='first')
-    # row_angles = ds.row_angles
-    # column_angles = ds.column_angles
+def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
     row_angles, column_angles, _ = get_dataset_info(config)
 
     file_ext = 'loc_errors.pickle' if file_ext is None else file_ext
@@ -109,3 +106,40 @@ def run_localisation_evaluation(config, sr_dir, file_ext=None, hrtf_selection=No
 
         convert_to_sofa(nodes_replaced_path, config, row_angles, column_angles)
         print('Created valid sofa files')
+        hrtf_file_names = [hrtf_file_name for hrtf_file_name in os.listdir(nodes_replaced_path + '/sofa_min_phase')]
+
+    eng = matlab.engine.start_matlab()
+    s = eng.genpath(config.amt_dir)
+    eng.addpath(s, nargout=0)
+    s = eng.genpath(config.data_dir_path)
+    eng.addpath(s, nargout=0)
+
+    loc_errors = []
+    for file in hrtf_file_names:
+        target_sofa_file = config.valid_target_path + '/sofa_min_phase/' + file
+        if hrtf_selection == 'minimum' or hrtf_selection == 'maximum':
+            generated_sofa_file = f'{nodes_replaced_path}/sofa_min_phase/{hrtf_selection}.sofa'
+        else:
+            generated_sofa_file = nodes_replaced_path + '/sofa_min_phase/' + file
+
+        print(f'Target: {target_sofa_file}')
+        print(f'Generated: {generated_sofa_file}')
+        [pol_acc1, pol_rms1, querr1] = eng.calc_loc(generated_sofa_file, target_sofa_file, nargout=3)
+        subject_id = ''.join(re.findall(r'\d+', file))
+        loc_errors.append([subject_id, pol_acc1, pol_rms1, querr1])
+        print('pol_acc1: %s' % pol_acc1)
+        print('pol_rms1: %s' % pol_rms1)
+        print('querr1: %s' % querr1)
+        with open(f'{sr_dir}/loc_test.txt', 'a') as f:
+            f.write(f"subject {subject_id}: pol_acc1: {pol_acc1}, pol_rms1: {pol_rms1}, querr1: {querr1}")
+
+    print('Mean ACC Error: %0.3f' % np.mean([error[1] for error in loc_errors]))
+    print('Mean RMS Error: %0.3f' % np.mean([error[2] for error in loc_errors]))
+    print('Mean QUERR Error: %0.3f' % np.mean([error[3] for error in loc_errors]))
+    with open(f'{sr_dir}/loc_test.txt', 'a') as f:
+        f.write('Mean ACC Error: %0.3f' % np.mean([error[1] for error in loc_errors]))
+        f.write('Mean RMS Error: %0.3f' % np.mean([error[2] for error in loc_errors]))
+        f.write('Mean QUERR Error: %0.3f' % np.mean([error[3] for error in loc_errors]))
+
+    with open(f'{sr_dir}/{file_ext}', "wb") as file:
+        pickle.dump(loc_errors, file)
