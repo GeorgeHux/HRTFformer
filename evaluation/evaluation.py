@@ -70,7 +70,7 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
             lsd_errors.append([subject_id,  float(error.detach())])
             print('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
             with open(f'{sr_dir}/log.txt', 'a') as f:
-                f.write('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
+                f.write('LSD Error of subject %s: %0.4f \n' % (subject_id, float(error.detach())))
 
         # with open(f'{config.valid_recon_path}/{config.upscale_factor}/mag/{file_ext}', "wb") as file:
         # with open(f'{config.path}/{config.upscale_factor}/{file_ext}', "wb") as file:
@@ -131,15 +131,15 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
         print('pol_rms1: %s' % pol_rms1)
         print('querr1: %s' % querr1)
         with open(f'{sr_dir}/loc_test.txt', 'a') as f:
-            f.write(f"subject {subject_id}: pol_acc1: {pol_acc1}, pol_rms1: {pol_rms1}, querr1: {querr1}")
+            f.write(f"subject {subject_id}: pol_acc1: {pol_acc1}, pol_rms1: {pol_rms1}, querr1: {querr1}\n")
 
     print('Mean ACC Error: %0.3f' % np.mean([error[1] for error in loc_errors]))
     print('Mean RMS Error: %0.3f' % np.mean([error[2] for error in loc_errors]))
     print('Mean QUERR Error: %0.3f' % np.mean([error[3] for error in loc_errors]))
     with open(f'{sr_dir}/loc_test.txt', 'a') as f:
-        f.write('Mean ACC Error: %0.3f' % np.mean([error[1] for error in loc_errors]))
-        f.write('Mean RMS Error: %0.3f' % np.mean([error[2] for error in loc_errors]))
-        f.write('Mean QUERR Error: %0.3f' % np.mean([error[3] for error in loc_errors]))
+        f.write('Mean ACC Error: %0.3f \n' % np.mean([error[1] for error in loc_errors]))
+        f.write('Mean RMS Error: %0.3f \n' % np.mean([error[2] for error in loc_errors]))
+        f.write('Mean QUERR Error: %0.3f \n' % np.mean([error[3] for error in loc_errors]))
 
     with open(f'{sr_dir}/{file_ext}', "wb") as file:
         pickle.dump(loc_errors, file)
