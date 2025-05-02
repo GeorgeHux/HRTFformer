@@ -144,7 +144,7 @@ class Decoder(nn.Module):
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
             # 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
-            out_channels = [512, 512, 512, 512, 512, 512]
+            out_channels = [1024, 1024, 512, 512, 512, 512]
         num_layers = len(out_channels) + 1
 
         for layer_index in range(num_layers):

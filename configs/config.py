@@ -63,15 +63,15 @@ class Config:
         self.checkpoint_path = f'{self.data_dir_path}/checkpoints'
 
         # Training hyperparams
-        self.batch_size = 8
+        self.batch_size = 16
         self.num_workers = 1
         self.num_initial_points = 3
         self.optimizer = 'adam'
-        self.num_epochs = 300  # was originally 250
+        self.num_epochs = 600  # was originally 250
         self.lr = 2e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
-        self.apply_sht = False
-        self.use_mse_loss = True
+        self.apply_sht = True
+        self.use_mse_loss = False
         self.save_interval = 150
         self.CosineAnnealingLR_period = 50
 
@@ -84,9 +84,9 @@ class Config:
         self.decoder_initial_size = 16
         self.num_heads = 8
         self.num_groups = 2
-        self.dropout = 0.1
-        self.norm_type = "instance"
-        self.activation = "prelu"
+        self.dropout = 0.
+        self.norm_type = "token_scale"
+        self.activation = "relu"
 
         # Loss function weight
         self.content_weight = 1
