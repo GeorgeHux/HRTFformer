@@ -111,7 +111,8 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
     eng = matlab.engine.start_matlab()
     s = eng.genpath(config.amt_dir)
     eng.addpath(s, nargout=0)
-    s = eng.genpath(config.data_dir_path)
+    # s = eng.genpath(config.data_dir_path)
+    s = eng.genpath('C:/Users/steph/Desktop/XuyiHu/HRTF-neurips')
     eng.addpath(s, nargout=0)
 
     loc_errors = []
