@@ -74,6 +74,7 @@ class Config:
         self.use_mse_loss = False
         self.save_interval = 150
         self.CosineAnnealingLR_period = 50
+        self.use_nd_loss = True
 
         # model parameters
         self.latent_dim = 256
