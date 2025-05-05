@@ -388,8 +388,9 @@ def get_model(config: Config):
 
     # model = AutoEncoder(nbins=nbins, initial_size=lr_size, latent_dim=config.latent_dim, base_channels=512, target_size=target_size).to(device)
     # model = ResEncTranDec(encoder_config, decoder_config).to(device)
-    model = AutoEncoder(ResEncoder, encoder_config, Decoder, decoder_config).to(device)
+    # model = AutoEncoder(ResEncoder, encoder_config, Decoder, decoder_config).to(device)
     # model = AutoEncoder(Encoder, encoder_config, D_DBPN, decoder_config).to(device)
+    model = AutoEncoder(Encoder, encoder_config, Decoder, decoder_config)
 
     return model
 
@@ -434,6 +435,9 @@ def neighbor_dissim_metric(recons, target, reduction='mean', domain="magnitude")
     if domain == "magnitude_db":
         recons_mag = 10 ** (recons / 20)
         target_mag = 10 ** (target / 20)
+    else:
+        recons_mag = recons
+        target_mag = target
     recons_mag = F.pad(recons_mag, (0,0,1,1,0,0), mode='circular')
     target_mag = F.pad(target_mag, (0,0,1,1,0,0), mode='circular')
     r, w, h = recons_mag.shape[-3:] # 1, 74, 12

@@ -135,7 +135,7 @@ class Decoder(nn.Module):
             nn.GELU(),
             Reshape(-1, initial_size, in_channels)
         )
-        self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)
+        # self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)
         self.layers = nn.ModuleList()
         if model_config.apply_sht:
             # for SH coefficients: 4->8->16->32->64->128->256->512
@@ -145,9 +145,15 @@ class Decoder(nn.Module):
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
             # 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
             out_channels = [1024, 1024, 512, 512, 512, 512]
-        num_layers = len(out_channels) + 1
+        # num_layers = len(out_channels) + 1
+
+        num_layers = len(out_channels)
 
         for layer_index in range(num_layers):
+            self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
+            if layer_index == num_layers - 1:
+                self.layers.append(Trim(model_config.target_size, dim=1))
+            in_channels = out_channels[layer_index]
             self.layers.append(TransformerLayer(emb_size=in_channels,
                                                 hidden_size=model_config.hidden_size,
                                                 num_layers=model_config.num_transformer_layers,
@@ -157,15 +163,24 @@ class Decoder(nn.Module):
                                                 activation=model_config.activation,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
+            # self.layers.append(TransformerLayer(emb_size=in_channels,
+            #                                     hidden_size=model_config.hidden_size,
+            #                                     num_layers=model_config.num_transformer_layers,
+            #                                     num_heads=model_config.num_heads,
+            #                                     num_groups=model_config.num_groups,
+            #                                     norm_type=model_config.norm_type,
+            #                                     activation=model_config.activation,
+            #                                     dropout=model_config.dropout,
+            #                                     target_size=model_config.target_size))
             
             # self.layers.append(ChannelAttention(channels=in_channels))
 
-            if layer_index < num_layers - 1:
-                # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
-                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
-                in_channels = out_channels[layer_index]
-            if layer_index == num_layers - 2:
-                self.layers.append(Trim(model_config.target_size, dim=1))
+            # if layer_index < num_layers - 1:
+            #     # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
+            #     self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
+            #     in_channels = out_channels[layer_index]
+            # if layer_index == num_layers - 2:
+            #     self.layers.append(Trim(model_config.target_size, dim=1))
 
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
