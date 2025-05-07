@@ -191,8 +191,9 @@ def train(config: Config, model, optimizer, train_prefetcher):
                     loss = content_loss + sh_coeff_cos_loss
                 else:
                     loss = content_loss
-            if config.use_nd_loss:
-                neighbor_dissim_loss = neighbor_dissim_metric(recons, hrtf, domain=config.domain)
+            neighbor_dissim_loss = None
+            if sd_loss_list and sd_loss_list[-1] < 6 and config.use_nd_loss:
+                neighbor_dissim_loss = neighbor_dissim_metric(recons, hrtf, domain=config.domain) * 0.1
                 neighbor_loss += neighbor_dissim_loss.item()
                 loss += neighbor_dissim_loss
             
@@ -233,8 +234,9 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 f.write(f"{batch_index}/{len(train_prefetcher)}\n")
                 f.write(f"loss: {loss.item()}\n")
                 f.write(f"grad_norm: {grad_norm_list[-1]}\n")
-                f.write(f"sd: {spectral_distorion}")
-                f.write(f"neighbor dissimilarity loss: {neighbor_dissim_loss}\n")
+                f.write(f"sd: {spectral_distorion}\n")
+                if config.use_nd_loss and neighbor_dissim_loss is not None:
+                    f.write(f"neighbor dissimilarity loss: {neighbor_dissim_loss.item()}\n")
                 if config.apply_sht and not config.use_mse_loss:
                     f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
                     f.write(f"content loss: {content_loss.item()}\n\n")
@@ -292,7 +294,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     plot_losses([train_loss_list], ['Training loss'], ['red'], path=plot_path, filename='loss', title="Training Loss")
     plot_losses([grad_norm_list], ['grad norm'], ['green'], path=plot_path, filename='grad_norm', title="Grad Norm")
     plot_losses([sd_loss_list], ['training sd loss'], ['blue'], path=plot_path, filename='training_sd', title="Training sd")
-    if config.use_nd_loss:
+    if config.use_nd_loss and neighbor_dissim_loss_list:
         plot_losses([neighbor_dissim_loss_list], ['neighbor dissimilarity loss'], ['cyan'], path=plot_path, filename='neighbor_loss', title="neighbor loss")
     if config.apply_sht and not config.use_mse_loss:
         plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
