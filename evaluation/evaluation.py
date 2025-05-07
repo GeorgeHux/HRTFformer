@@ -63,6 +63,10 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
         val_data_file_names = ['/' + os.path.basename(x) for x in val_data_paths]
 
         lsd_errors = []
+        min_lsd = float('inf')
+        min_subject = None
+        max_lsd = 0
+        max_subject = None
         for file_name in val_data_file_names:
             target, generated = replace_nodes(config, sr_dir, file_name)
             error = spectral_distortion_metric(generated, target)
@@ -71,6 +75,12 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
             print('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
             with open(f'{sr_dir}/log.txt', 'a') as f:
                 f.write('LSD Error of subject %s: %0.4f \n' % (subject_id, float(error.detach())))
+            if error < min_lsd:
+                min_lsd = error
+                min_subject = subject_id
+            if error > max_lsd:
+                max_lsd = error
+                max_subject = subject_id
 
         # with open(f'{config.valid_recon_path}/{config.upscale_factor}/mag/{file_ext}', "wb") as file:
         # with open(f'{config.path}/{config.upscale_factor}/{file_ext}', "wb") as file:
@@ -79,6 +89,9 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
     print('Mean LSD Error: %0.3f' % np.mean([error[1] for error in lsd_errors]))
     with open(f'{sr_dir}/log.txt', 'a') as f:
         f.write('Mean LSD Error: %0.3f \n' % np.mean([error[1] for error in lsd_errors]))
+        f.write(f"Min LSD Error: subject {min_subject}: {min_lsd}\n")
+        f.write(f"Max LSD Error: subject {max_subject}: {max_lsd}\n")
+        f.write(f"std LSD Error: {np.std([error[1] for error in lsd_errors])}\n") 
     
 
 def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
@@ -116,6 +129,12 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
     eng.addpath(s, nargout=0)
 
     loc_errors = []
+    min_acc = float('inf')
+    min_rms = float('inf')
+    min_querr = float('inf')
+    min_acc_subject = None
+    min_rms_subject = None
+    min_querr_subject = None
     for file in hrtf_file_names:
         target_sofa_file = config.valid_target_path + '/sofa_min_phase/' + file
         if hrtf_selection == 'minimum' or hrtf_selection == 'maximum':
@@ -133,6 +152,19 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
         print('querr1: %s' % querr1)
         with open(f'{sr_dir}/loc_test.txt', 'a') as f:
             f.write(f"subject {subject_id}: pol_acc1: {pol_acc1}, pol_rms1: {pol_rms1}, querr1: {querr1}\n")
+        if pol_acc1 < min_acc:
+            min_acc = pol_acc1
+            min_acc_subject = subject_id
+            min_acc_results = f"subject {min_acc_subject}: acc: {min_acc}, rms: {pol_rms1}, querr: {querr1}"
+        if pol_rms1 < min_rms:
+            min_rms = pol_rms1
+            min_rms_subject = subject_id
+            min_rms_results = f"subject {min_rms_subject}: acc: {pol_acc1}, rms: {min_rms}, querr: {querr1}"
+        if querr1 < min_querr:
+            min_querr = querr1
+            min_querr_subject = subject_id
+            min_querr_results = f"subject {min_querr_subject}: acc: {pol_acc1}, rms: {pol_rms1}, querr: {min_querr}"
+
 
     print('Mean ACC Error: %0.3f' % np.mean([error[1] for error in loc_errors]))
     print('Mean RMS Error: %0.3f' % np.mean([error[2] for error in loc_errors]))
@@ -141,6 +173,9 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
         f.write('Mean ACC Error: %0.3f \n' % np.mean([error[1] for error in loc_errors]))
         f.write('Mean RMS Error: %0.3f \n' % np.mean([error[2] for error in loc_errors]))
         f.write('Mean QUERR Error: %0.3f \n' % np.mean([error[3] for error in loc_errors]))
+        f.write(f'Min acc: {min_acc_results}\n')
+        f.write(f'Min rms: {min_rms_results}\n')
+        f.write(f'min querr: {min_querr_results}\n')
 
     with open(f'{sr_dir}/{file_ext}', "wb") as file:
         pickle.dump(loc_errors, file)
