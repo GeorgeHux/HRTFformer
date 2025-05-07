@@ -16,7 +16,7 @@ def get_sample_coords(num_initial_points):
     col = [-45., -30., -20., -10.,   0.,  10.,  20.,  30.,  45.,  60.,  75.,  90.]
     """
     if num_initial_points == 100:
-        row_idx = [0, 4, 8, 12, 16, 20, 24, 28, 32, 35, 37, 40, 44, 48, 52, 56, 60, 64, 68, 72]
+        row_idx = [0, 4, 8, 12, 16, 20, 24, 28, 32, 35, 37, 40, 44, 48, 52, 56, 60, 64, 68, 71]
         col_idx = [1, 3, 4, 6, 8]
         return [(i, j) for i in row_idx for j in col_idx]
     
