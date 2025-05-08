@@ -152,8 +152,8 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
         print('querr1: %s' % querr1)
         with open(f'{sr_dir}/loc_test.txt', 'a') as f:
             f.write(f"subject {subject_id}: pol_acc1: {pol_acc1}, pol_rms1: {pol_rms1}, querr1: {querr1}\n")
-        if pol_acc1 < min_acc:
-            min_acc = pol_acc1
+        if np.abs(pol_acc1) < min_acc:
+            min_acc = np.abs(pol_acc1)
             min_acc_subject = subject_id
             min_acc_results = f"subject {min_acc_subject}: acc: {min_acc}, rms: {pol_rms1}, querr: {querr1}"
         if pol_rms1 < min_rms:
