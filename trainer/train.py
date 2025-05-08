@@ -152,7 +152,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 
                 sr = model(lr_coefficient)
                 # cosine similarity loss
-                if not config.use_mse_loss:
+                if not config.use_mse_loss and config.use_cos_loss:
                     sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
                     sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
                 recons = inverse_sht(config, sr, masks)
@@ -187,7 +187,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             else:
                 unweighted_content_loss = content_criterion(config, recons, hrtf, sd_mean, sd_std, ild_mean, ild_std)
                 content_loss = config.content_weight * unweighted_content_loss
-                if config.apply_sht:
+                if config.apply_sht and config.use_cos_loss:
                     loss = content_loss + sh_coeff_cos_loss
                 else:
                     loss = content_loss
@@ -200,8 +200,9 @@ def train(config: Config, model, optimizer, train_prefetcher):
             train_loss += loss.item()
             if config.apply_sht and not config.use_mse_loss:
                 train_content_loss += content_loss.item()
-                train_sh_coeff_cos_loss += sh_coeff_cos_loss.item()
-                train_sh_coeff_mse_loss += sh_coeff_mse_loss.item()
+                if config.use_cos_loss:
+                    train_sh_coeff_cos_loss += sh_coeff_cos_loss.item()
+                    train_sh_coeff_mse_loss += sh_coeff_mse_loss.item()
             
             # backward
             loss.backward()
@@ -238,7 +239,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 if config.use_nd_loss and neighbor_dissim_loss is not None:
                     f.write(f"neighbor dissimilarity loss: {neighbor_dissim_loss.item()}\n")
                 if config.apply_sht and not config.use_mse_loss:
-                    f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
+                    if config.use_cos_loss:
+                        f.write(f"sh cos: {sh_coeff_cos_loss.item()}, sh mse: {sh_coeff_mse_loss.item()}\n")
                     f.write(f"content loss: {content_loss.item()}\n\n")
                 
             
@@ -279,7 +281,8 @@ def train(config: Config, model, optimizer, train_prefetcher):
             print(f"neighbor dissimilarity loss: {neighbor_dissim_loss_list[-1]}")
         if config.apply_sht and not config.use_mse_loss:
             print(f"Average content loss: {train_content_loss_list[-1]}")
-            print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
+            if config.use_cos_loss:
+                print(f"Aberage sh mse loss: {train_sh_coeff_mse_list[-1]}, sh cos loss: {train_sh_coeff_cos_list[-1]}")
 
         if train_loss_list[-1] < min_loss:
             msg = f"better result obtained, new checkpoint saved at epoch {epoch}, cur: {train_loss_list[-1]}, prev: {min_loss}"
@@ -297,12 +300,18 @@ def train(config: Config, model, optimizer, train_prefetcher):
     if config.use_nd_loss and neighbor_dissim_loss_list:
         plot_losses([neighbor_dissim_loss_list], ['neighbor dissimilarity loss'], ['cyan'], path=plot_path, filename='neighbor_loss', title="neighbor loss")
     if config.apply_sht and not config.use_mse_loss:
-        plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
-        plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
-        plot_losses([train_loss_list, train_content_loss_list, train_sh_coeff_cos_list],
-                    ['Training loss', 'Content loss', 'coefficient sim loss'],
-                    ['green', 'purple', 'red'],
-                    path=plot_path, filename='loss_curves', title="Training loss curves")
+        if config.use_cos_loss:
+            plot_losses([train_sh_coeff_mse_list],['SH mse loss'],['blue'], path=plot_path, filename='SH_mse_loss', title="SH mse loss")
+            plot_losses([train_sh_coeff_cos_list],['SH cos loss'],['blue'], path=plot_path, filename='SH_cos_loss', title="SH cos loss")
+            plot_losses([train_loss_list, train_content_loss_list, train_sh_coeff_cos_list],
+                        ['Training loss', 'Content loss', 'coefficient sim loss'],
+                        ['green', 'purple', 'red'],
+                        path=plot_path, filename='loss_curves', title="Training loss curves")
+        else:
+            plot_losses([train_loss_list, train_content_loss_list],
+                        ['Training loss', 'Content loss'],
+                        ['green', 'purple'],
+                        path=plot_path, filename='loss_curves', title="Training loss curves")
         with open(f'{log_dir}/train_losses.pickle', "wb") as file:
             pickle.dump((train_loss_list, train_content_loss_list, train_sh_coeff_cos_list, train_sh_coeff_mse_list), file)
     else:

@@ -56,7 +56,8 @@ class RelativePositionBias(nn.Module):
         rel_pos = k_pos[None, :] - q_pos[:, None] # [q_len, k_len]
 
         # map the relative position to [0, 2 * max_distance - 2]
-        rel_pos = torch.clamp(rel_pos + self.max_distance - 1, 0, 2 * self.max_distance - 2)
+        # rel_pos = torch.clamp(rel_pos + self.max_distance - 1, 0, 2 * self.max_distance - 2)
+        rel_pos = torch.clamp(rel_pos + q_len - 1, 0, 2 * self.max_distance - 2)
 
         # retrieve bias from bias table
         bias = self.bias_table[rel_pos] # [q_len, k_len, num_heads]

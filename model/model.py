@@ -12,16 +12,20 @@ class DownsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, padding=1):
         super(DownsampleLayer, self).__init__()
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
-        self.gelu = nn.GELU()
-        self.norm = nn.LayerNorm(out_channels)
+        # self.gelu = nn.GELU()
+        self.act = nn.PReLU()
+        # self.norm = nn.LayerNorm(out_channels)
+        self.norm = nn.BatchNorm1d(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
         x = self.conv(x)
-        x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
-        x = self.gelu(x)
+        x = self.act(x)
         x = self.norm(x)
+        x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
+        # x = self.gelu(x)
+        
         return x
 
 class Encoder(nn.Module):
@@ -68,13 +72,13 @@ class Encoder(nn.Module):
                                 nn.PReLU(),
                                 # nn.GELU(),
                                 nn.Linear(1024, model_config.latent_dim))
-        self.latent_conv = nn.Sequential(
-            nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(1024),
-            # nn.PReLU(),
-            nn.GELU(),
-            nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
-        )
+        # self.latent_conv = nn.Sequential(
+        #     nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
+        #     nn.BatchNorm1d(1024),
+        #     # nn.PReLU(),
+        #     nn.GELU(),
+        #     nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
+        # )
 
     def _get_output_dim(self, size):
         # configuration for convolution layer
@@ -132,7 +136,8 @@ class Decoder(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(model_config.latent_dim, initial_size*in_channels),
             nn.BatchNorm1d(initial_size * in_channels),
-            nn.GELU(),
+            # nn.GELU(),
+            nn.PReLU(),
             Reshape(-1, initial_size, in_channels)
         )
         # self.conv0 = nn.Conv1d(model_config.latent_dim, in_channels, kernel_size=3, stride=1, padding=1)
