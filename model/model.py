@@ -15,14 +15,14 @@ class DownsampleLayer(nn.Module):
         # self.gelu = nn.GELU()
         self.act = nn.PReLU()
         # self.norm = nn.LayerNorm(out_channels)
-        self.norm = nn.BatchNorm1d(out_channels)
+        # self.norm = nn.BatchNorm1d(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
         x = self.conv(x)
         x = self.act(x)
-        x = self.norm(x)
+        # x = self.norm(x)
         x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
         # x = self.gelu(x)
         
@@ -43,9 +43,9 @@ class Encoder(nn.Module):
         # [Transofrmer, downsampling, transformer, downsampling, transformer, downsampling, transformer]
         # strides only indicate the stride used in each downsampling layer
         # therefore the total number of encoding layer is len(strides) + 1
-        num_encoding_layer = len(self.strides) + 1
+        num_encoding_layer = len(self.strides)
         self.layers = nn.ModuleList()
-        for i in range(len(self.strides) + 1):
+        for i in range(num_encoding_layer):
             self.layers.append(TransformerLayer(emb_size=in_channels,
                                                 hidden_size=model_config.hidden_size,
                                                 num_layers=model_config.num_transformer_layers,
@@ -58,13 +58,17 @@ class Encoder(nn.Module):
             
             # Add channel attention after transformer
             # self.layers.append(ChannelAttention(channels=in_channels))
+            out_channels = min(in_channels * 2, 2048)
+            self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
+                                               stride=self.strides[i])) # downsamply by 2 if stride=2
+            in_channels = out_channels
 
             # no downsampling for last layer
-            if i < num_encoding_layer - 1:
-                out_channels = min(in_channels * 2, 2048)
-                self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
-                                                   stride=self.strides[i])) # downsamply by 2 if stride=2
-                in_channels = out_channels
+            # if i < num_encoding_layer - 1:
+            #     out_channels = min(in_channels * 2, 2048)
+            #     self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
+            #                                        stride=self.strides[i])) # downsamply by 2 if stride=2
+            #     in_channels = out_channels
         
         output_size = self._get_output_dim(initial_size)
         self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
@@ -72,13 +76,6 @@ class Encoder(nn.Module):
                                 nn.PReLU(),
                                 # nn.GELU(),
                                 nn.Linear(1024, model_config.latent_dim))
-        # self.latent_conv = nn.Sequential(
-        #     nn.Conv1d(in_channels // 2, 1024, kernel_size=3, stride=1, padding=1),
-        #     nn.BatchNorm1d(1024),
-        #     # nn.PReLU(),
-        #     nn.GELU(),
-        #     nn.Conv1d(1024, model_config.latent_dim, kernel_size=3, stride=1, padding=1)
-        # )
 
     def _get_output_dim(self, size):
         # configuration for convolution layer
@@ -144,30 +141,16 @@ class Decoder(nn.Module):
         self.layers = nn.ModuleList()
         if model_config.apply_sht:
             # for SH coefficients: 4->8->16->32->64->128->256->512
-            out_channels = [1024, 1024, 512, 512, 256, 256]
+            out_channels = [1024, 512, 512, 256, 256]
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
-            # 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
             out_channels = [1024, 1024, 512, 512, 512, 512]
         # num_layers = len(out_channels) + 1
 
         num_layers = len(out_channels)
 
         for layer_index in range(num_layers):
-            # self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
-            # if layer_index == num_layers - 1:
-            #     self.layers.append(Trim(model_config.target_size, dim=1))
-            # in_channels = out_channels[layer_index]
-            # self.layers.append(TransformerLayer(emb_size=in_channels,
-            #                                     hidden_size=model_config.hidden_size,
-            #                                     num_layers=model_config.num_transformer_layers,
-            #                                     num_heads=model_config.num_heads,
-            #                                     num_groups=model_config.num_groups,
-            #                                     norm_type=model_config.norm_type,
-            #                                     activation=model_config.activation,
-            #                                     dropout=model_config.dropout,
-            #                                     target_size=model_config.target_size))
             self.layers.append(TransformerLayer(emb_size=in_channels,
                                                 hidden_size=model_config.hidden_size,
                                                 num_layers=model_config.num_transformer_layers,
@@ -177,16 +160,17 @@ class Decoder(nn.Module):
                                                 activation=model_config.activation,
                                                 dropout=model_config.dropout,
                                                 target_size=model_config.target_size))
-            
+            self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
+            in_channels = out_channels[layer_index]
             # self.layers.append(ChannelAttention(channels=in_channels))
 
-            if layer_index < num_layers - 1:
-                # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
-                self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
-                in_channels = out_channels[layer_index]
-            if layer_index == num_layers - 2:
-                self.layers.append(Trim(model_config.target_size, dim=1))
-
+            # if layer_index < num_layers - 1:
+            #     # self.layers.append(UpsampleLayer(in_channels=in_channels,out_channels=out_channels[layer_index]))
+            #     self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
+            #     in_channels = out_channels[layer_index]
+            # if layer_index == num_layers - 2:
+            #     self.layers.append(Trim(model_config.target_size, dim=1))
+        self.layers.append(Trim(model_config.target_size, dim=1))
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
     def forward(self, x):
