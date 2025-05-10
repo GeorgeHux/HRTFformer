@@ -140,7 +140,9 @@ class IterativeBlock(nn.Module):
         self.up4 = D_UpBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
         self.down4 = D_DownBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
         self.up5 = D_UpBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
-        self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
+        self.down5 = D_DownBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
+        self.up6 = D_UpBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
+        self.out_conv = ConvBlock(6*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
         if self.input_shape_layout == 'bsc':
@@ -166,6 +168,12 @@ class IterativeBlock(nn.Module):
 
         concat_l = torch.cat((l, concat_l), 1)
         h = self.up5(concat_l)
+
+        concat_h = torch.cat((h, concat_h), 1)
+        l = self.down5(concat_h)
+
+        concat_l = torch.cat((l, concat_l), 1)
+        h = self.up6(concat_l)
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
