@@ -16,14 +16,20 @@ def get_sample_coords(num_initial_points):
     col = [-45., -30., -20., -10.,   0.,  10.,  20.,  30.,  45.,  60.,  75.,  90.]
     """
     if num_initial_points == 100:
+        # [-180., -160., -140., -120., -100.,  -80.,  -60.,  -40.,  -20.,   -5., 5.,   20.,   40.,   60.,   80.,  100.,  120.,  140.,  160.,  175.]
         row_idx = [0, 4, 8, 12, 16, 20, 24, 28, 32, 35, 37, 40, 44, 48, 52, 56, 60, 64, 68, 71]
-        col_idx = [1, 3, 4, 6, 8]
+        col_idx = [1, 3, 4, 6, 8] # [-30, -10, 0, 20, 45]
         return [(i, j) for i in row_idx for j in col_idx]
     
     if num_initial_points == 27:
         row_idx = [0, 8, 16, 24, 32, 40, 48, 56, 64] #[-180.0, -140.0, -100.0, -60.0, -20.0, 20.0, 60.0, 100.0, 140.0]
         col_idx = [0, 4, 8]    #[-45.0, 0.0, 45.0]
         return [(i, j) for i in row_idx for j in col_idx]
+
+    if num_initial_points == 19:
+        row_idx = [[18, 27, 36, 45, 54], [12, 21, 27, 36, 45, 51, 60], [18, 27, 36, 45, 54], [24, 48]]
+        col_idx = [1, 4, 7, 9]
+        return [(row, col) for col, rows in zip(col_idx, row_idx) for row in rows]
     
     if num_initial_points == 18:
         row_idx = [0, 12, 24, 36, 48, 60] #[-180, -120, -60, 0, 60, 120]
