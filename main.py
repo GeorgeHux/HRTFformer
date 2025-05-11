@@ -16,7 +16,7 @@ from data.preprocessing.utils import convert_to_sofa
 
 # from baselines.barycentric_interpolation import run_barycentric_interpolation
 # from baselines.hrtf_selection import run_hrtf_selection
-from evaluation.evaluation import run_lsd_evaluation, run_localisation_evaluation
+from evaluation.evaluation import run_lsd_evaluation, run_localisation_evaluation, run_ild_itd_evaluation
 from data.hartufo import Sonicom, HrirSpec
 from data.utils import get_hrtf_loader_function
 from data.preprocessing.utils import get_train_data_statistics
@@ -99,7 +99,7 @@ def main(config: Config, mode):
 
         # compute sd_mean, sd_std, ild_mean, ild_std in train samples
         get_train_data_statistics(config, all_train_samples)
-        
+
         if config.gen_sofa_flag:
             convert_to_sofa(valid_target_path, config, row_angles, column_angles)
 
@@ -124,7 +124,8 @@ def main(config: Config, mode):
         checkpoint_path = os.path.dirname(checkpoint)
         sr_dir = checkpoint_path + '/mag'
         run_lsd_evaluation(config, sr_dir)
-        # run_localisation_evaluation(config, sr_dir)
+        run_localisation_evaluation(config, sr_dir)
+        run_ild_itd_evaluation(config, sr_dir)
 
     elif mode == 'barycentric_baseline':
         barycentric_data_folder = f'/barycentric_interpolated_data_{config.upscale_factor}'
