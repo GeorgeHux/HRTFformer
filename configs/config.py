@@ -63,12 +63,12 @@ class Config:
         self.checkpoint_path = f'{self.data_dir_path}/checkpoints'
 
         # Training hyperparams
-        self.batch_size = 12
+        self.batch_size = 8
         self.num_workers = 1
-        self.num_initial_points = 3
+        self.num_initial_points = 19
         self.optimizer = 'adam'
-        self.num_epochs = 600  # was originally 250
-        self.lr = 1e-3
+        self.num_epochs = 100  # was originally 250
+        self.lr = 5e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = True
         self.use_mse_loss = False
@@ -78,7 +78,7 @@ class Config:
         self.use_cos_loss = False
 
         # model parameters
-        self.latent_dim = 256
+        self.latent_dim = 128
         self.lr_pad_idx=0
         self.hidden_size = 1024
         self.num_encoder_transformer_layers = 1
@@ -139,6 +139,7 @@ class Config:
             "num groups": self.num_groups,
             "dropout": self.dropout,
             "norm type": self.norm_type,
-            "activation": self.activation
+            "activation": self.activation,
+            "neighbor loss": self.use_nd_loss
         }
         return params

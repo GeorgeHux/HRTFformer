@@ -15,6 +15,8 @@ import numpy as np
 
 from data.dataset import get_sample_coords
 from data.utils import get_dataset_info
+from spatialaudiometrics import load_data as ld
+from spatialaudiometrics import hrtf_metrics as hf
 
 import matlab.engine
 
@@ -179,3 +181,63 @@ def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_sele
 
     with open(f'{sr_dir}/{file_ext}', "wb") as file:
         pickle.dump(loc_errors, file)
+
+
+def run_ild_itd_evaluation(config: Config, sr_dir):
+    nodes_replaced_path = sr_dir + '/nodes_replaced'
+    hrtf_file_names = [hrtf_file_name for hrtf_file_name in os.listdir(nodes_replaced_path + '/sofa_min_phase')]
+    ild_errors = []
+    min_ild = float('inf')
+    min_ild_subject = None
+    max_ild = 0
+    max_ild_subject = None
+    itd_errors = []
+    min_itd = float('inf')
+    min_itd_subject = None
+    max_itd = 0
+    max_itd_subject = None
+
+    for file in hrtf_file_names:
+        target_sofa_file = config.valid_target_path + '/sofa_min_phase/' + file
+        generated_sofa_file = nodes_replaced_path + '/sofa_min_phase/' + file
+        target_hrtf = ld.HRTF(target_sofa_file)
+        generated_hrtf = ld.HRTF(generated_sofa_file)
+        subject_id = ''.join(re.findall(r'\d+', file))
+        ild_diff = hf.calculate_ild_difference(target_hrtf, generated_hrtf)
+        itd_diff = hf.calculate_itd_difference(target_hrtf, generated_hrtf)
+
+        if ild_diff < min_ild:
+            min_ild = ild_diff
+            min_ild_subject = subject_id
+        if ild_diff > max_ild:
+            max_ild = ild_diff
+            max_ild_subject = subject_id
+        
+        if itd_diff < min_itd:
+            min_itd = itd_diff
+            min_itd_subject = subject_id
+        if itd_diff > max_itd:
+            max_itd = itd_diff
+            max_itd_subject = subject_id
+        
+        ild_errors.append([subject_id,  float(ild_diff)])
+        itd_errors.append([subject_id, float(itd_diff)])
+
+        result = f"subject {subject_id} - ild: {ild_diff}, itd: {itd_diff}"
+        print(result)
+        with open(f'{sr_dir}/ild_itd_log.txt', 'a') as f:
+            f.write(f"{result}\n")
+    
+    with open(f"{sr_dir}/ild_errors.pickle", "wb") as file:
+        pickle.dump(ild_errors, file)
+    with open(f"{sr_dir}/itd_errors.pickle", "wb") as file:
+        pickle.dump(itd_errors, file)
+    
+    print('Mean ILD Error: %0.3f' % np.mean([error[1] for error in ild_errors]))
+    print('Mean ITD Error: %0.3f' % np.mean([error[1] for error in itd_errors]))
+    with open(f'{sr_dir}/ild_itd_log.txt', 'a') as f:
+        f.write('Mean ILD Error: %0.3f \n' % np.mean([error[1] for error in ild_errors]))
+        f.write(f'Min ILD Error: subject {min_ild_subject}: {min_ild}\n')
+        f.write(f'Max ILD Error: subject {max_ild_subject}: {max_ild}\n')
+        f.write(f'Min ITD Error: subject: {min_itd_subject}: {min_itd}\n')
+        f.write(f'Max ITD Error: subject: {max_itd_subject}: {max_itd}\n')
