@@ -2,17 +2,14 @@ import os
 import matlab.engine
 from pathlib import Path
 
-upsampled_files = ['LAPtask2_3_1.sofa', 'LAPtask2_3_2.sofa', 'LAPtask2_3_3.sofa',
-                   'LAPtask2_5_1.sofa', 'LAPtask2_5_2.sofa','LAPtask2_5_3.sofa',
-                   'LAPtask2_19_1.sofa', 'LAPtask2_19_2.sofa', 'LAPtask2_19_3.sofa',
-                   'LAPtask2_100_1.sofa', 'LAPtask2_100_2.sofa', 'LAPtask2_100_3.sofa']
+baselines = ['GEP_GAN', 'IOA3D_Task2_sofa', 'LAP_Challenge_SUpDEQ_MCA', 'merl_t2_system2', 'SYT_FSP-AE_LAPtask2', 'Task2ResultsKalimotxo']
 
-baseline = 'GEP_GAN'
+upsampled_files = ['LAPtask2_3_1', 'LAPtask2_3_2', 'LAPtask2_3_3',
+                   'LAPtask2_5_1', 'LAPtask2_5_2','LAPtask2_5_3',
+                   'LAPtask2_19_1', 'LAPtask2_19_2', 'LAPtask2_19_3',
+                   'LAPtask2_100_1', 'LAPtask2_100_2', 'LAPtask2_100_3']
 
-upsampled_path = f'C:/Users/steph/Desktop/XuyiHu/LAP_Task_2_Submissions/task2_submissions/{baseline}'
 results_file = "C:/Users/steph/Desktop/XuyiHu/LAP_Task_2_Submissions/results.txt"
-with open(results_file, 'a') as f:
-    f.write(f'baseline: {baseline}\n')
 
 s = '_FreeFieldCompMinPhase_48kHz.sofa'
 target_ids = ['P0204', 'P0208', 'P0213',
@@ -31,12 +28,24 @@ s = eng.genpath('C:/Users/steph/Desktop/XuyiHu/amtoolbox-1.6.0')
 eng.addpath(s, nargout=0)
 s = eng.genpath('C:/Users/steph/Desktop/XuyiHu/HRTF-neurips')
 eng.addpath(s, nargout=0)
-
-for i in range(len(upsampled_files)):
-    target_id = target_ids[i]
-    target_sofa = target_path + f'/{target_id}/HRTF/HRTF/48kHz/{target_id}_FreeFieldCompMinPhase_48kHz.sofa'
-    generated_sofa = upsampled_path + f'/{upsampled_files[i]}'
-    [pol_acc1, pol_rms1, querr1] = eng.calc_loc(generated_sofa, target_sofa, nargout=3)
-    print(f"{exp_name[i]}: acc: {pol_acc1}, rms: {pol_rms1}, querr: {querr1}")
-    with open(results_file, "a") as f:
-        f.write(f"{exp_name[i]}: acc: {pol_acc1}, rms: {pol_rms1}, querr: {querr1}\n")
+for baseline in baselines:
+    upsampled_path = f'C:/Users/steph/Desktop/XuyiHu/LAP_Task_2_Submissions/task2_submissions/{baseline}'
+    with open(results_file, 'a') as f:
+        f.write(f'baseline: {baseline}\n')
+    for i in range(len(upsampled_files)):
+        target_id = target_ids[i]
+        target_sofa = target_path + f'/{target_id}/HRTF/HRTF/48kHz/{target_id}_FreeFieldCompMinPhase_48kHz.sofa'
+        upsampled_file = upsampled_files[i]
+        if baseline == 'LAP_Challenge_SUpDEQ_MCA':
+            upsampled_file += 'upsampled.sofa'
+        elif baseline == 'SYT_FSP-AE_LAPtask2':
+            upsampled_file = 'SYT_FSP-AE_' + upsampled_file + '.sofa'
+        else:
+            upsampled_file += '.sofa'
+        generated_sofa = upsampled_path + f'/{upsampled_file}'
+        [pol_acc1, pol_rms1, querr1] = eng.calc_loc(generated_sofa, target_sofa, nargout=3)
+        print(f"{exp_name[i]}: acc: {pol_acc1}, rms: {pol_rms1}, querr: {querr1}")
+        with open(results_file, "a") as f:
+            f.write(f"{exp_name[i]}: acc: {pol_acc1}, rms: {pol_rms1}, querr: {querr1}\n")
+    with open(results_file, 'a') as f:
+        f.write(f'-------------------------\n')
