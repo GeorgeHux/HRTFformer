@@ -71,43 +71,46 @@ class MergeHRTFDataset(Dataset):
         self.selected_coords = get_sample_coords(num_initial_points)
 
     def __getitem__(self, index: int):
-        left = self.left_hrtf[index]['features'][:, :, :, 1:]
-        right = self.right_hrtf[index]['features'][:, :, :, 1:]
-        sample_id = self.left_hrtf.subject_ids[index]
-        merge = np.ma.concatenate([left, right], axis=3)
-        selected_rows = [coord[0] for coord in self.selected_coords]
-        selected_cols = [coord[1] for coord in self.selected_coords]
-        
-        if self.apply_sht:
-            original_mask = np.all(np.ma.getmaskarray(left), axis=3)
-            mask = np.ones((self.num_row_angles, self.num_col_angles, self.num_radii), dtype=bool)
-            mask[selected_rows, selected_cols, :] = original_mask[selected_rows, selected_cols, :]
-            lr_SHT = SphericalHarmonicsTransform(self.degree, self.row_angles,
-                                                self.column_angles,
-                                                self.left_hrtf.radii,
-                                                mask)
-            lr_coefficient = torch.from_numpy(lr_SHT(merge)) # [num_coefficients, nbins]
-            hr_SHT = SphericalHarmonicsTransform(self.max_degree, self.row_angles,
-                                                self.column_angles,
-                                                self.left_hrtf.radii,
-                                                original_mask)
-            hr_coefficient = torch.from_numpy(hr_SHT(merge).T)
-
-            if self.transform is not None:
-                mean_lr, mean_full = self.transform[0]
-                std_lr, std_full = self.transform[1]
-                lr_coefficient = (lr_coefficient - mean_lr) / std_lr
-                hr_coefficient = (hr_coefficient - mean_full) / std_full
+        try:
+            left = self.left_hrtf[index]['features'][:, :, :, 1:]
+            right = self.right_hrtf[index]['features'][:, :, :, 1:]
+            sample_id = self.left_hrtf.subject_ids[index]
+            merge = np.ma.concatenate([left, right], axis=3)
+            selected_rows = [coord[0] for coord in self.selected_coords]
+            selected_cols = [coord[1] for coord in self.selected_coords]
             
-            merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
-            return {"lr_coefficient": lr_coefficient, "hr_coefficient": hr_coefficient,
-                    "hrtf": merge, "mask": original_mask, "id": sample_id}
-        else:
-            merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
-            lr_hrtf = merge[:, :, selected_rows, selected_cols]
-            lr_hrtf = lr_hrtf.reshape(lr_hrtf.shape[0], -1).T # [num_points, nbins]
-            return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}
-    
+            if self.apply_sht:
+                original_mask = np.all(np.ma.getmaskarray(left), axis=3)
+                mask = np.ones((self.num_row_angles, self.num_col_angles, self.num_radii), dtype=bool)
+                mask[selected_rows, selected_cols, :] = original_mask[selected_rows, selected_cols, :]
+                lr_SHT = SphericalHarmonicsTransform(self.degree, self.row_angles,
+                                                    self.column_angles,
+                                                    self.left_hrtf.radii,
+                                                    mask)
+                lr_coefficient = torch.from_numpy(lr_SHT(merge)) # [num_coefficients, nbins]
+                hr_SHT = SphericalHarmonicsTransform(self.max_degree, self.row_angles,
+                                                    self.column_angles,
+                                                    self.left_hrtf.radii,
+                                                    original_mask)
+                hr_coefficient = torch.from_numpy(hr_SHT(merge).T)
+
+                if self.transform is not None:
+                    mean_lr, mean_full = self.transform[0]
+                    std_lr, std_full = self.transform[1]
+                    lr_coefficient = (lr_coefficient - mean_lr) / std_lr
+                    hr_coefficient = (hr_coefficient - mean_full) / std_full
+                
+                merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
+                return {"lr_coefficient": lr_coefficient, "hr_coefficient": hr_coefficient,
+                        "hrtf": merge, "mask": original_mask, "id": sample_id}
+            else:
+                merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
+                lr_hrtf = merge[:, :, selected_rows, selected_cols]
+                lr_hrtf = lr_hrtf.reshape(lr_hrtf.shape[0], -1).T # [num_points, nbins]
+                return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}
+        except Exception as e:
+            print(f"[ERROR] Index {index} failed in __getitem__: {e}")
+            raise
     def __len__(self):
         return len(self.left_hrtf)
     
@@ -157,6 +160,9 @@ class CUDAPrefetcher:
             self.batch_data = None
             return None
 
+        if self.batch_data is None:
+            return None
+        
         with torch.cuda.stream(self.stream):
             for k, v in self.batch_data.items():
                 if torch.is_tensor(v) and k not in {'mask', 'id'}:
