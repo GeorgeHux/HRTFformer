@@ -192,7 +192,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 else:
                     loss = content_loss
             neighbor_dissim_loss = None
-            if sd_loss_list and sd_loss_list[-1] < 5.5 and config.use_nd_loss:
+            if config.use_nd_loss:
                 neighbor_dissim_loss = neighbor_dissim_metric(recons, hrtf, domain=config.domain)
                 neighbor_loss += neighbor_dissim_loss.item()
                 loss += neighbor_dissim_loss

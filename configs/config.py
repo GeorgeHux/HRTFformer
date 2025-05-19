@@ -65,10 +65,10 @@ class Config:
         # Training hyperparams
         self.batch_size = 8
         self.num_workers = 1
-        self.num_initial_points = 19
+        self.num_initial_points = 100
         self.optimizer = 'adam'
         self.num_epochs = 100  # was originally 250
-        self.lr = 5e-4
+        self.lr = 2e-4
         self.margin = 1.8670232e-08 # filter out negative values and make it non-zero when in magnitude domain
         self.apply_sht = True
         self.use_mse_loss = False
@@ -80,15 +80,15 @@ class Config:
         # model parameters
         self.latent_dim = 128
         self.lr_pad_idx=0
-        self.hidden_size = 1024
+        self.hidden_size = 4096
         self.num_encoder_transformer_layers = 1
-        self.num_decoder_transformer_layers = 1
+        self.num_decoder_transformer_layers = 2
         self.decoder_initial_size = 16
-        self.num_heads = 8
-        self.num_groups = 2
+        self.num_heads = 32
+        self.num_groups = 16
         self.dropout = 0.
-        self.norm_type = "token_scale"
-        self.activation = "relu"
+        self.norm_type = "token_scale" # batch
+        self.activation = "prelu"
 
         # Loss function weight
         self.content_weight = 1

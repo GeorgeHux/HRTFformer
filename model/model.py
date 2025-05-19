@@ -151,15 +151,16 @@ class Decoder(nn.Module):
         num_layers = len(out_channels)
 
         for layer_index in range(num_layers):
-            self.layers.append(TransformerLayer(emb_size=in_channels,
-                                                hidden_size=model_config.hidden_size,
-                                                num_layers=model_config.num_transformer_layers,
-                                                num_heads=model_config.num_heads,
-                                                num_groups=model_config.num_groups,
-                                                norm_type=model_config.norm_type,
-                                                activation=model_config.activation,
-                                                dropout=model_config.dropout,
-                                                target_size=model_config.target_size))
+            if layer_index in [0, 2]:
+                self.layers.append(TransformerLayer(emb_size=in_channels,
+                                                    hidden_size=model_config.hidden_size,
+                                                    num_layers=model_config.num_transformer_layers,
+                                                    num_heads=model_config.num_heads,
+                                                    num_groups=model_config.num_groups,
+                                                    norm_type=model_config.norm_type,
+                                                    activation=model_config.activation,
+                                                    dropout=model_config.dropout,
+                                                    target_size=model_config.target_size))
             self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
             in_channels = out_channels[layer_index]
             # self.layers.append(ChannelAttention(channels=in_channels))

@@ -14,7 +14,7 @@ class GroupedQueryAttention(nn.Module):
             = num_heads -> multi-head attention, each query relates to an unique pair of key, value
         
         """
-        self.use_rope = False
+        self.use_rope = True
         self.hidden_size = hidden_size
         assert num_heads % num_groups == 0, "num_heads must be divisible by num_groups"
         self.num_heads = num_heads
