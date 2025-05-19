@@ -141,7 +141,7 @@ class Decoder(nn.Module):
         self.layers = nn.ModuleList()
         if model_config.apply_sht:
             # for SH coefficients: 4->8->16->32->64->128->256->512
-            out_channels = [1024, 512, 512, 256, 256]
+            out_channels = [1024, 1024, 512, 512, 256, 256]
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
@@ -151,7 +151,7 @@ class Decoder(nn.Module):
         num_layers = len(out_channels)
 
         for layer_index in range(num_layers):
-            if layer_index in [0, 2]:
+            if layer_index in [0, 2, 4]:
                 self.layers.append(TransformerLayer(emb_size=in_channels,
                                                     hidden_size=model_config.hidden_size,
                                                     num_layers=model_config.num_transformer_layers,

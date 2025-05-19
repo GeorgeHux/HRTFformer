@@ -80,12 +80,12 @@ class Config:
         # model parameters
         self.latent_dim = 128
         self.lr_pad_idx=0
-        self.hidden_size = 4096
+        self.hidden_size = 2048
         self.num_encoder_transformer_layers = 1
         self.num_decoder_transformer_layers = 2
-        self.decoder_initial_size = 16
-        self.num_heads = 32
-        self.num_groups = 16
+        self.decoder_initial_size = 8
+        self.num_heads = 16
+        self.num_groups = 8
         self.dropout = 0.
         self.norm_type = "token_scale" # batch
         self.activation = "prelu"

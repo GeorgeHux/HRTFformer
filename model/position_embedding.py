@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 def rotate_half(x):
     x1, x2 = x.chunk(2, dim=-1)
+    # x1, x2 = x[..., ::2], x[..., 1::2] # split odd and even
     return torch.cat((-x2, x1), dim=-1)
 
 def apply_rotary_pos_emb(x, cos, sin):
