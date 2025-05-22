@@ -141,7 +141,7 @@ class Decoder(nn.Module):
         self.layers = nn.ModuleList()
         if model_config.apply_sht:
             # for SH coefficients: 4->8->16->32->64->128->256->512
-            out_channels = [1024, 1024, 512, 512, 256, 256]
+            out_channels = [256, 256, 256, 256, 256]
         else:
             # for raw hrtf points: 4->8->16->32->64->128->256->512->1024
             # out_channels = [1024, 1024, 512, 512, 512, 256, 256, 256]
@@ -161,7 +161,7 @@ class Decoder(nn.Module):
                                                     activation=model_config.activation,
                                                     dropout=model_config.dropout,
                                                     target_size=model_config.target_size))
-            self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc'))
+            self.layers.append(IterativeBlock(in_channels, out_channels[layer_index], kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc', num_stages=8))
             in_channels = out_channels[layer_index]
             # self.layers.append(ChannelAttention(channels=in_channels))
 

@@ -126,56 +126,82 @@ class D_UpBlock(nn.Module):
         return h1 + h0
     
 class IterativeBlock(nn.Module):
-    def __init__(self, channels, out_channels, kernel, stride, padding, activation='gelu', input_shape_layout='bcs'):
+    def __init__(self, channels, out_channels, kernel, stride, padding, activation='gelu', input_shape_layout='bcs', num_stages=5):
         super(IterativeBlock, self).__init__()
         bias = False
         norm = "batch"
         self.input_shape_layout = input_shape_layout
+        self.num_stages = num_stages
+
+        self.d_ups = nn.ModuleList()
+        self.d_downs = nn.ModuleList()
+        
+        # initial up - down - up
         self.up1 = UpBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
         self.down1 = DownBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
         self.up2 = UpBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
-        self.down2 = D_DownBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
-        self.up3 = D_UpBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
-        self.down3 = D_DownBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
-        self.up4 = D_UpBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
-        self.down4 = D_DownBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
-        self.up5 = D_UpBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
-        # self.down5 = D_DownBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
-        # self.up6 = D_UpBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
-        self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
+
+        # dense up and down
+        for stage in range(2, num_stages):
+            self.d_downs.append(D_DownBlock(channels, kernel, stride, padding, stage, bias=bias, activation=activation, norm=norm))
+            self.d_ups.append(D_UpBlock(channels, kernel, stride, padding, stage, bias=bias, activation=activation, norm=norm))
+        
+        self.out_conv = ConvBlock(num_stages*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
+
+        # self.down2 = D_DownBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
+        # self.up3 = D_UpBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
+        # self.down3 = D_DownBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
+        # self.up4 = D_UpBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
+        # self.down4 = D_DownBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
+        # self.up5 = D_UpBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
+        # # self.down5 = D_DownBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
+        # # self.up6 = D_UpBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
+        # self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
         if self.input_shape_layout == 'bsc':
             x = x.permute(0, 2, 1)
+        print(x.shape)
         h1 = self.up1(x)
         l1 = self.down1(h1)
         h2 = self.up2(l1)
         
-        concat_h = torch.cat((h2, h1), 1)
-        l = self.down2(concat_h)
-        
-        concat_l = torch.cat((l, l1), 1)
-        h = self.up3(concat_l)
+        for i in range(len(self.d_ups)):
+            if i == 0:
+                concat_h = torch.cat((h2, h1), 1)
+                l = self.d_downs[i](concat_h)
+                concat_l = torch.cat((l, l1), 1)
+                h = self.d_ups[i](concat_l)
+            else:
+                concat_h = torch.cat((h, concat_h), 1)
+                l = self.d_downs[i](concat_h)
+                concat_l = torch.cat((l, concat_l), 1)
+                h = self.d_ups[i](concat_l)
 
-        concat_h = torch.cat((h, concat_h), 1)
-        l = self.down3(concat_h)
+        # concat_h = torch.cat((h2, h1), 1)
+        # l = self.down2(concat_h)
 
-        concat_l = torch.cat((l, concat_l), 1)
-        h = self.up4(concat_l)
+        # concat_l = torch.cat((l, l1), 1)
+        # h = self.up3(concat_l)
 
-        concat_h = torch.cat((h, concat_h), 1)
-        l = self.down4(concat_h)
+        # concat_h = torch.cat((h, concat_h), 1)
+        # l = self.down3(concat_h)
 
-        concat_l = torch.cat((l, concat_l), 1)
-        h = self.up5(concat_l)
+        # concat_l = torch.cat((l, concat_l), 1)
+        # h = self.up4(concat_l)
 
-        concat_h = torch.cat((h, concat_h), 1)
+        # concat_h = torch.cat((h, concat_h), 1)
+        # l = self.down4(concat_h)
+
+        # concat_l = torch.cat((l, concat_l), 1)
+        # h = self.up5(concat_l)
+        # concat_h = torch.cat((h, concat_h), 1)
         # l = self.down5(concat_h)
 
         # concat_l = torch.cat((l, concat_l), 1)
         # h = self.up6(concat_l)
 
-        # concat_h = torch.cat((h, concat_h), 1)
+        concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
         if self.input_shape_layout == 'bsc':
             out = out.permute(0, 2, 1)
