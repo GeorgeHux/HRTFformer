@@ -147,21 +147,10 @@ class IterativeBlock(nn.Module):
             self.d_ups.append(D_UpBlock(channels, kernel, stride, padding, stage, bias=bias, activation=activation, norm=norm))
         
         self.out_conv = ConvBlock(num_stages*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
-
-        # self.down2 = D_DownBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
-        # self.up3 = D_UpBlock(channels, kernel, stride, padding, 2, bias=bias, activation=activation, norm=norm)
-        # self.down3 = D_DownBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
-        # self.up4 = D_UpBlock(channels, kernel, stride, padding, 3, bias=bias, activation=activation, norm=norm)
-        # self.down4 = D_DownBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
-        # self.up5 = D_UpBlock(channels, kernel, stride, padding, 4, bias=bias, activation=activation, norm=norm)
-        # # self.down5 = D_DownBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
-        # # self.up6 = D_UpBlock(channels, kernel, stride, padding, 5, bias=bias, activation=activation, norm=norm)
-        # self.out_conv = ConvBlock(5*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
         
     def forward(self, x):
         if self.input_shape_layout == 'bsc':
             x = x.permute(0, 2, 1)
-        print(x.shape)
         h1 = self.up1(x)
         l1 = self.down1(h1)
         h2 = self.up2(l1)
@@ -177,29 +166,6 @@ class IterativeBlock(nn.Module):
                 l = self.d_downs[i](concat_h)
                 concat_l = torch.cat((l, concat_l), 1)
                 h = self.d_ups[i](concat_l)
-
-        # concat_h = torch.cat((h2, h1), 1)
-        # l = self.down2(concat_h)
-
-        # concat_l = torch.cat((l, l1), 1)
-        # h = self.up3(concat_l)
-
-        # concat_h = torch.cat((h, concat_h), 1)
-        # l = self.down3(concat_h)
-
-        # concat_l = torch.cat((l, concat_l), 1)
-        # h = self.up4(concat_l)
-
-        # concat_h = torch.cat((h, concat_h), 1)
-        # l = self.down4(concat_h)
-
-        # concat_l = torch.cat((l, concat_l), 1)
-        # h = self.up5(concat_l)
-        # concat_h = torch.cat((h, concat_h), 1)
-        # l = self.down5(concat_h)
-
-        # concat_l = torch.cat((l, concat_l), 1)
-        # h = self.up6(concat_l)
 
         concat_h = torch.cat((h, concat_h), 1)
         out = self.out_conv(concat_h)
@@ -232,14 +198,15 @@ class D_DBPN(nn.Module):
         activation = 'prelu'
 
         self.conv0 = ConvBlock(512, base_channels, 3, 1, 1)
+        num_stages = 8
 
         # Back-projection stages
-        self.up1 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
-        self.up2 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
-        self.up3 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
-        self.up4 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
-        self.up5 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
-        self.up6 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation)
+        self.up1 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
+        self.up2 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
+        self.up3 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
+        self.up4 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
+        self.up5 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
+        self.up6 = IterativeBlock(base_channels, base_channels, kernel, stride, padding, activation=activation, num_stages=num_stages)
         
         # Reconstruction
         self.out_conv = ConvBlock(base_channels, nbins, 3, 1, 1, activation=None)
