@@ -26,6 +26,8 @@ def get_model_and_optimizer(config: Config):
         optimizer = optim.Adam(hrtf_transformer.parameters(), lr=config.lr)
     elif config.optimizer == "sgd":
         optimizer = optim.SGD(hrtf_transformer.parameters(), lr=config.lr, momentum=0.9, weight_decay=0.0001)
+    elif config.optimizer == "RMSprop":
+        optimizer = optim.RMSprop(hrtf_transformer.parameters(), lr=config.lr)
     else:
         raise ValueError(f"unrecognized optimizer: {config.optimizer}")
 
