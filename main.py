@@ -119,7 +119,7 @@ def main(config: Config, mode):
     
     elif mode == 'test':
         print("using cuda? ", torch.cuda.is_available())
-        checkpoint = "C:/Users/steph/Desktop/XuyiHu/output/checkpoints/3/2025-04-10_15-40-10/transformer_249.pt"
+        checkpoint = "C:/Users/steph/Desktop/XuyiHu/output/checkpoints/3/2025-04-10_15-40-10/transformer.pt"
         test(config, checkpoint)
         checkpoint_path = os.path.dirname(checkpoint)
         sr_dir = checkpoint_path + '/mag'
@@ -175,6 +175,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("mode")
     parser.add_argument("-r", "--remote")
+    parser.add_argument("-d", "--dataset", default="Sonicom")
     args = parser.parse_args()
 
     if args.remote == "True":
@@ -184,5 +185,7 @@ if __name__ == '__main__':
     else:
         raise RuntimeError("Please enter 'True' or 'False' for the remote tag (-r/--remote)")
     
-    config = Config(remote)
+
+    
+    config = Config(remote, args.dataset)
     main(config, args.mode)

@@ -23,13 +23,16 @@ class Config:
 
         # Data processing parameters
         self.gen_sofa_flag = True
-        self.nbins_hrtf = 128  # make this a power of 2
+        if self.dataset == 'Sonicom':
+            self.nbins_hrtf = 128  # make this a power of 2
+        else:
+            self.nbins_hrtf = 139
         self.train_samples_ratio = 0.8
         self.hrir_samplerate = 48000.0
         self.normalize_input = False
         self.domain = 'magnitude_db'
         self.max_degree = 21
-        self.max_num_points = 72 * 12
+        self.max_num_points = 72 * 12 if self.dataset == 'Sonicom' else 72 * 19
         self.hrtf_loader = "hrtfdata"
 
         # Data dirs
@@ -83,7 +86,7 @@ class Config:
         self.hidden_size = 2048
         self.num_encoder_transformer_layers = 1
         self.num_decoder_transformer_layers = 2
-        self.decoder_initial_size = 8
+        self.decoder_initial_size = 16
         self.num_heads = 16
         self.num_groups = 8
         self.dropout = 0.
@@ -118,6 +121,7 @@ class Config:
     def get_train_params(self):
         # deprecated
         params = {
+            "dataset": self.dataset,
             "domain": self.domain,
             "max sht degree": self.max_degree,
             "max num points": self.max_num_points,
