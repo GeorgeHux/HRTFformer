@@ -120,12 +120,15 @@ def convert_to_sofa(hrtf_dir, config, row_angles, column_angles, phase_ext='_pha
     shutil.rmtree(Path(sofa_path_output), ignore_errors=True)
     Path(sofa_path_output).mkdir(parents=True, exist_ok=True)
 
+    nbins = config.nbins_hrtf * 2
+    num_rows = len(row_angles)
+    num_cols = len(column_angles)
     for f in hrtf_file_names:
         with open(os.path.join(hrtf_dir, f), "rb") as hrtf_file:
             hrtf = pickle.load(hrtf_file) # r x w x h x nbins
-            if hrtf.shape == (72, 12, 1, 256):
+            if hrtf.shape == (num_rows, num_cols, 1, nbins):
                 hrtf = hrtf.permute(2, 0, 1, 3)
-            expected_shape = (1, 72, 12, 256)
+            expected_shape = (1, num_rows, num_cols, nbins)
             assert hrtf.shape == expected_shape, f"Expected shape {expected_shape}, but got shape {hrtf.shape}"
             sofa_filename_output = os.path.basename(hrtf_file.name).replace('.pickle', '.sofa').replace(mag_ext, '')
             sofa_output = sofa_path_output + sofa_filename_output
