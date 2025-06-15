@@ -69,7 +69,7 @@ def inverse_sht(config, sr, hr, masks):
     recons_full = hr.clone().permute(0, 3, 4, 2, 1).view(bs, -1, nbins)
     mask_flat = masks.view(bs, -1) # [bs, n]
     batch_idx, pos_idx = torch.nonzero(~mask_flat,as_tuple=True)
-    recons_full[batch_idx, pos_idx] = recons
+    recons_full[batch_idx, pos_idx] = recons.view(-1, nbins)
     recons_full = recons_full.view(bs, num_row_angles, num_column_angles, num_radii, -1).permute(0, 4, 3, 1, 2) # [batch_size, nbins, r, w, h]
     if config.domain == "magnitude":
         recons_full = F.relu(recons_full) + config.margin # filter out negative values and make it non-zero
