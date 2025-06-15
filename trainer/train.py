@@ -157,7 +157,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 if not config.use_mse_loss and config.use_cos_loss:
                     sh_coeff_cos_loss = cos_similarity_criterion(sr, hr_coefficient)
                     sh_coeff_mse_loss = ((sr - hr_coefficient) ** 2).mean()
-                recons = inverse_sht(config, sr, masks)
+                recons = inverse_sht(config, sr, hrtf, masks)
             else:
                 # lr_hrtf shape: [b, num_initial_points, nbins]
                 lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
