@@ -85,7 +85,7 @@ def test(config: Config, checkpoint):
             # upsample lr coefficient
             with torch.no_grad():
                 sr = model(lr_coefficient)
-            recon = inverse_sht(config, sr, mask)[0].detach().cpu()
+            recon = inverse_sht(config, sr, hrtf, mask)[0].detach().cpu()
         else:
             lr_hrtf = batch_data["lr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                non_blocking=True, dtype=torch.float)
