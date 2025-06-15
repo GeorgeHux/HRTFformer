@@ -67,8 +67,8 @@ def load_hrtf(config: Config, mean=None, std=None):
         right_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}}, subject_ids=val_ids)
     else:
         raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
-    train_dataset = MergeHRTFDataset(hrtf_loader, left_train, right_train, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
-    val_dataset = MergeHRTFDataset(hrtf_loader, left_val, right_val, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
+    train_dataset = MergeHRTFDataset(hrtf_loader, config.dataset, left_train, right_train, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
+    val_dataset = MergeHRTFDataset(hrtf_loader, config.dataset, left_val, right_val, config.num_initial_points, max_degree=max_degree, apply_sht=apply_sht, transform=transform)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=config.batch_size,

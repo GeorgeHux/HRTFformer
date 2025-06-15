@@ -49,7 +49,7 @@ def get_dataset_info(config: Config):
     else:
         raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
 
-def inverse_sht(config, sr, masks):
+def inverse_sht(config, sr, hr, masks):
     harmonics_list = []
     bs = sr.shape[0]
     num_row_angles = len(config.row_angles)
@@ -61,7 +61,15 @@ def inverse_sht(config, sr, masks):
         harmonics_list.append(harmonics)
     harmonics_tensor = torch.stack(harmonics_list).to(sr.device)
     # compute recons and rearrange the shape to [batch_size, nbins, r, w, h]
-    recons = (harmonics_tensor @ sr.permute(0, 2, 1)).view(bs, num_row_angles, num_column_angles, num_radii, -1).permute(0, 4, 3, 1, 2)
+    # recons = (harmonics_tensor @ sr.permute(0, 2, 1)).view(bs, num_row_angles, num_column_angles, num_radii, -1).permute(0, 4, 3, 1, 2)
+    recons = (harmonics_tensor @ sr.permute(0, 2, 1)) # [batch_size, n, nbins]
+    # the original full hrtf may have masked data, therefore the recons obtained from inverse SHT may not have the full
+    # number of data points. We use the original mask to map the reconstructed points to the unmasked places
+    recons_full = hr.clone().view()
+    mask_flat = masks.view(bs, -1) # [bs, n]
+    batch_idx, pos_idx = torch.nonzero(~mask_flat,as_tuple=True)
+    recons_full[batch_idx, pos_idx] = recons
+    recons_full = recons_full.view(bs, num_row_angles, num_column_angles, num_radii, -1).permute(0, 4, 3, 1, 2) # [batch_size, nbins, r, w, h]
     if config.domain == "magnitude":
         recons = F.relu(recons) + config.margin # filter out negative values and make it non-zero
     if config.normalize_input:
