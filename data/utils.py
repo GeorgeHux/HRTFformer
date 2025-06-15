@@ -66,7 +66,7 @@ def inverse_sht(config, sr, hr, masks):
     recons = (harmonics_tensor @ sr.permute(0, 2, 1)) # [batch_size, n, nbins]
     # the original full hrtf may have masked data, therefore the recons obtained from inverse SHT may not have the full
     # number of data points. We use the original mask to map the reconstructed points to the unmasked places
-    recons_full = hr.clone().permute(0, 3, 4, 2, 1).view(bs, -1, nbins)
+    recons_full = hr.clone().permute(0, 3, 4, 2, 1).view(bs, -1, nbins).to(sr.device)
     mask_flat = masks.view(bs, -1) # [bs, n]
     batch_idx, pos_idx = torch.nonzero(~mask_flat,as_tuple=True)
     recons_full[batch_idx, pos_idx] = recons.view(-1, nbins)
