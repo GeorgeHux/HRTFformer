@@ -52,7 +52,7 @@ def get_dataset_info(config: Config):
 def inverse_sht(config, sr, hr, masks):
     harmonics_list = []
     bs = sr.shape[0]
-    nbins = sr.shape[-1]
+    nbins = sr.shape[1]
     num_row_angles = len(config.row_angles)
     num_column_angles = len(config.column_angles)
     num_radii = len(config.radii)
