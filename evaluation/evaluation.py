@@ -27,7 +27,7 @@ def replace_nodes(config: Config, sr_dir, file_name):
     with open(sr_dir + file_name, "rb") as f:
         sr_hrtf = pickle.load(f)   # w x h x r x nbins
 
-    selected_coords = get_sample_coords(config.num_initial_points)
+    selected_coords = get_sample_coords(config.num_initial_points, config.dataset)
     for coord in selected_coords:
         sr_hrtf[coord[0], coord[1], :] = hr_hrtf[coord[0], coord[1], :]
 
