@@ -16,10 +16,11 @@ import glob
 from configs.config import Config
 from trainer.utils import spectral_distortion_metric, ILD_metric
 
-def get_train_data_statistics(config: Config, train_samples):
+def get_train_data_statistics(config: Config, train_samples, mask):
     train_samples = [x.permute(3, 0, 1, 2).unsqueeze(0) for x in train_samples]
     left_hrtfs = [x[:,:config.nbins_hrtf,...] for x in train_samples]
     right_hrtfs = [x[:,config.nbins_hrtf:,...] for x in train_samples]
+    mask = mask.unsqueeze(0)
 
     sd = []
     ild = []
@@ -29,8 +30,8 @@ def get_train_data_statistics(config: Config, train_samples):
         running_ild = 0
         for ref in range(len(train_samples)):
             if cur != ref:
-                sd_right = spectral_distortion_metric(right_hrtfs[cur], right_hrtfs[ref])
-                sd_left = spectral_distortion_metric(left_hrtfs[cur], left_hrtfs[ref])
+                sd_right = spectral_distortion_metric(right_hrtfs[cur], right_hrtfs[ref], mask)
+                sd_left = spectral_distortion_metric(left_hrtfs[cur], left_hrtfs[ref], mask)
                 running_sd += (sd_right + sd_left) / 2.
 
                 running_ild += ILD_metric(config.nbins_hrtf, train_samples[cur], train_samples[ref])

@@ -98,7 +98,8 @@ def main(config: Config, mode):
                     pickle.dump(merge, file)
 
         # compute sd_mean, sd_std, ild_mean, ild_std in train samples
-        get_train_data_statistics(config, all_train_samples)
+        mask = torch.all(torch.from_numpy(ds_left[0]['features'].mask), axis=3)
+        get_train_data_statistics(config, all_train_samples, mask)
 
         if config.gen_sofa_flag:
             convert_to_sofa(valid_target_path, config, row_angles, column_angles)

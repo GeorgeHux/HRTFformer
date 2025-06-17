@@ -34,7 +34,7 @@ def test(config: Config, checkpoint):
     device = torch.device(config.device_name if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
     # get data distribution info (row angles, column angles, radii) for latter use
-    config.row_angles, config.column_angles, config.radii = get_dataset_info(config)
+    config.row_angles, config.column_angles, config.radii, _ = get_dataset_info(config)
 
     checkpoint_path = os.path.dirname(checkpoint)
     recon_mag_dir = checkpoint_path + '/mag'

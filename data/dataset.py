@@ -163,9 +163,9 @@ class MergeHRTFDataset(Dataset):
             merge = np.ma.concatenate([left, right], axis=3)
             selected_rows = [coord[0] for coord in self.selected_coords]
             selected_cols = [coord[1] for coord in self.selected_coords]
+            original_mask = np.all(np.ma.getmaskarray(left), axis=3)
             
             if self.apply_sht:
-                original_mask = np.all(np.ma.getmaskarray(left), axis=3)
                 # mask = np.ones((self.num_row_angles, self.num_col_angles, self.num_radii), dtype=bool)
                 mask = original_mask.copy()
                 # mask[selected_rows, selected_cols, :] = original_mask[selected_rows, selected_cols, :]
@@ -194,7 +194,7 @@ class MergeHRTFDataset(Dataset):
                 merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)  # nbins x r x w x h
                 lr_hrtf = merge[:, :, selected_rows, selected_cols]
                 lr_hrtf = lr_hrtf.reshape(lr_hrtf.shape[0], -1).T # [num_points, nbins]
-                return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id}
+                return {"lr_hrtf": lr_hrtf, "hr_hrtf": merge, "id": sample_id, "mask": original_mask}
         except Exception as e:
             print(f"[ERROR] Index {index} failed in __getitem__: {e}")
             raise

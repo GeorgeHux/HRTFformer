@@ -59,7 +59,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     # get data distribution info (row angles, column angles, radii) for latter use
-    config.row_angles, config.column_angles, config.radii = get_dataset_info(config)
+    config.row_angles, config.column_angles, config.radii, _ = get_dataset_info(config)
 
     # Calculate how many batches of data are in each Epoch
     batches = len(train_prefetcher)
@@ -165,6 +165,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
                 # hrtf shape: [b, nbins, r, w, h]
                 hrtf = batch_data["hr_hrtf"].to(device=device, memory_format=torch.contiguous_format,
                                                    non_blocking=True, dtype=torch.float)
+                masks = batch_data["mask"]
                 # recons shape: [b, nbins, num_points]
                 recons = model(lr_hrtf)
                 recons = recons.reshape(hrtf.shape)
@@ -172,7 +173,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             # monitor training sd
             x = recons.detach().clone()
             y = hrtf.detach().clone()
-            spectral_distorion = spectral_distortion_metric(x, y, domain=config.domain).item()
+            spectral_distorion = spectral_distortion_metric(x, y, masks, domain=config.domain).item()
             sd_loss += spectral_distorion
 
             # during every 25th epoch and last epoch, save filename for mag spectrum plot
@@ -187,7 +188,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             if config.use_mse_loss:
                 loss = mse_loss_fn(recons, hrtf) * config.mse_scale
             else:
-                unweighted_content_loss = content_criterion(config, recons, hrtf, sd_mean, sd_std, ild_mean, ild_std)
+                unweighted_content_loss = content_criterion(config, recons, masks, hrtf, sd_mean, sd_std, ild_mean, ild_std)
                 content_loss = config.content_weight * unweighted_content_loss
                 if config.apply_sht and config.use_cos_loss:
                     loss = content_loss + sh_coeff_cos_loss

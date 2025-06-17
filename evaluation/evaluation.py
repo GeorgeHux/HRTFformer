@@ -38,6 +38,7 @@ def replace_nodes(config: Config, sr_dir, file_name):
 
 def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
     file_ext = 'lsd_errors.pickle' if file_ext is None else file_ext
+    _, _, _, mask = get_dataset_info(config)
     if hrtf_selection == 'minimum' or hrtf_selection == 'maximum':
         lsd_errors = []
         valid_data_paths = glob.glob('%s/%s_*' % (config.valid_target_path, config.dataset))
@@ -54,7 +55,7 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
             generated = torch.permute(sr_hrtf[:, None], (1, 4, 0, 2, 3)) 
             target = torch.permute(hr_hrtf[:, None], (1, 4, 0, 2, 3))  # 1 x nbins x r x w x h
 
-            error = spectral_distortion_metric(generated, target)
+            error = spectral_distortion_metric(generated, target, mask)
             subject_id = ''.join(re.findall(r'\d+', file_name))
             lsd_errors.append([subject_id,  float(error.detach())])
             print('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
@@ -71,7 +72,7 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
         max_subject = None
         for file_name in val_data_file_names:
             target, generated = replace_nodes(config, sr_dir, file_name)
-            error = spectral_distortion_metric(generated, target)
+            error = spectral_distortion_metric(generated, target, mask)
             subject_id = ''.join(re.findall(r'\d+', file_name))
             lsd_errors.append([subject_id,  float(error.detach())])
             print('LSD Error of subject %s: %0.4f' % (subject_id, float(error.detach())))
@@ -97,7 +98,7 @@ def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=Non
     
 
 def run_localisation_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
-    row_angles, column_angles, _ = get_dataset_info(config)
+    row_angles, column_angles, _, _ = get_dataset_info(config)
 
     file_ext = 'loc_errors.pickle' if file_ext is None else file_ext
 

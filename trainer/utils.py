@@ -126,21 +126,25 @@ def spectral_distortion_inner_v1(input_spectrum, target_spectrum, domain="magnit
     else:
         return torch.mean((numerator - denominator) ** 2, dim=1)
 
-def spectral_distortion_metric(generated, target, reduction='mean', domain="magnitude"):
-    """Computes the mean spectral distortion metric for a 5 dimensional tensor (N x C x P x W x H)
-    Where N is the batch size, C is the number of frequency bins, P is the number of panels (usually 5),
+def spectral_distortion_metric(generated, target, mask=None, reduction='mean', domain="magnitude"):
+    """Computes the mean spectral distortion metric for a 5 dimensional tensor (N x C x R x W x H)
+    Where N is the batch size, C is the number of frequency bins, R is the number of radius (usually 1),
     H is height, and W is width.
 
     Computes the mean over every HRTF in the batch"""
     batch_size = generated.size(0)
-    num_panels = generated.size(2)
-    width = generated.size(3)
-    height = generated.size(4)
-    total_positions = num_panels * height * width
+    # num_radius = generated.size(2)
+    # width = generated.size(3)
+    # height = generated.size(4)
+    if mask is None:
+        valid_mask = torch.ones_like(generated)
+    else:
+        valid_mask = ~mask.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
+    total_positions = torch.sum(valid_mask)
     # total_sd_metric = 0
     # for b in range(batch_size):
     #     total_all_positions = 0
-    #     for i in range(num_panels):
+    #     for i in range(num_radius):
     #         for j in range(width):
     #             for k in range(height):
     #                 average_over_frequencies = spectral_distortion_inner(generated[b, :, i, j, k],
@@ -148,8 +152,8 @@ def spectral_distortion_metric(generated, target, reduction='mean', domain="magn
     #                 total_all_positions += torch.sqrt(average_over_frequencies)
     #     sd_metric = total_all_positions / total_positions
     #     total_sd_metric += sd_metric
-    average_over_frequencies = spectral_distortion_inner_v1(generated, target, domain)
-    total_all_positions = torch.sum(torch.sqrt(average_over_frequencies))
+    average_over_frequencies = spectral_distortion_inner_v1(generated, target, domain) # [N, R, W, H]
+    total_all_positions = torch.sum(torch.sqrt(average_over_frequencies[valid_mask]))
     total_sd_metric = total_all_positions / total_positions
     if reduction == 'mean':
         output_loss = total_sd_metric / batch_size
@@ -219,7 +223,7 @@ def ILD_metric(nbins, generated, target, reduction="mean", domain="magnitude"):
 
     return output_loss
 
-def sd_ild_loss(config: Config, generated, target, sd_mean, sd_std, ild_mean, ild_std):
+def sd_ild_loss(config: Config, generated, target, masks, sd_mean, sd_std, ild_mean, ild_std):
     """Computes the mean sd/ild loss for a 5 dimensional tensor (N x C x P x W x H)
     Where N is the batch size, C is the number of frequency bins, P is the number of panels (usually 5),
     H is height, and W is width.
@@ -227,7 +231,7 @@ def sd_ild_loss(config: Config, generated, target, sd_mean, sd_std, ild_mean, il
     Computes the mean over every HRTF in the batch"""
 
     # calculate SD and ILD metrics
-    sd_metric = spectral_distortion_metric(generated, target, domain=config.domain)
+    sd_metric = spectral_distortion_metric(generated, target, masks, domain=config.domain)
     ild_metric = ILD_metric(config.nbins_hrtf, generated, target, domain=config.domain)
     # with open("log.txt", "a") as f:
     #     f.write(f"sd nan? {torch.isnan(sd_metric).any()}")

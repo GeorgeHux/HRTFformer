@@ -41,11 +41,13 @@ def get_dataset_info(config: Config):
     hrtf_loader = config.hrtf_loader
     if hrtf_loader == "hartufo":
         ds = load_function(data_dir, features_spec=HrirSpec(domain="magnitude", side="left", samplerate=config.hrir_samplerate), subject_ids='first')
-        return ds.fundamental_angles, ds.orthogonal_angles, ds.radii
+        mask = torch.all(torch.from_numpy(ds[0]['features'].mask), axis=3)
+        return ds.fundamental_angles, ds.orthogonal_angles, ds.radii, mask
     elif hrtf_loader == "hrtfdata":
         ds = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate,
                                                              'side': 'left', 'domain': config.domain}}, subject_ids='first')
-        return ds.row_angles, ds.column_angles, ds.radii
+        mask = torch.all(torch.from_numpy(ds[0]['features'].mask), axis=3)
+        return ds.row_angles, ds.column_angles, ds.radii, mask
     else:
         raise ValueError(f"unrecognized hrtf loader: {hrtf_loader}")
 
