@@ -126,7 +126,7 @@ def spectral_distortion_inner_v1(input_spectrum, target_spectrum, domain="magnit
     else:
         return torch.mean((numerator - denominator) ** 2, dim=1)
 
-def spectral_distortion_metric(generated, target, mask=None, reduction='mean', domain="magnitude"):
+def spectral_distortion_metric(generated, target, masks=None, reduction='mean', domain="magnitude"):
     """Computes the mean spectral distortion metric for a 5 dimensional tensor (N x C x R x W x H)
     Where N is the batch size, C is the number of frequency bins, R is the number of radius (usually 1),
     H is height, and W is width.
@@ -136,11 +136,11 @@ def spectral_distortion_metric(generated, target, mask=None, reduction='mean', d
     # num_radius = generated.size(2)
     # width = generated.size(3)
     # height = generated.size(4)
-    if mask is None:
+    if masks is None:
         valid_mask = torch.ones_like(generated)
     else:
-        valid_mask = ~mask.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
-    total_positions = torch.sum(valid_mask)
+        valid_mask = ~masks.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
+    total_positions = torch.sum(valid_mask[0])
     # total_sd_metric = 0
     # for b in range(batch_size):
     #     total_all_positions = 0
@@ -193,12 +193,16 @@ def ILD_metric_inner_v1(nbins, input_spectrum, target_spectrum, domain="magnitud
     return torch.abs(input_ILD - target_ILD)
 
 
-def ILD_metric(nbins, generated, target, reduction="mean", domain="magnitude"):
+def ILD_metric(nbins, generated, target, masks=None, reduction="mean", domain="magnitude"):
     batch_size = generated.size(0)
-    num_panels = generated.size(2)
-    height = generated.size(3)
-    width = generated.size(4)
-    total_positions = num_panels * height * width
+    # num_panels = generated.size(2)
+    # height = generated.size(3)
+    # width = generated.size(4)
+    if masks is None:
+        valid_masks = torch.ones_like(generated)
+    else:
+        valid_masks = ~masks.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
+    total_positions = torch.sum(valid_masks[0])
 
     # total_ILD_metric = 0
     # for b in range(batch_size):
@@ -212,7 +216,7 @@ def ILD_metric(nbins, generated, target, reduction="mean", domain="magnitude"):
     #     total_ILD_metric += ILD_metric_batch
 
     average_over_frequencies = ILD_metric_inner_v1(nbins, generated, target, domain)
-    total_ILD_metric = torch.sum(average_over_frequencies) / total_positions
+    total_ILD_metric = torch.sum(average_over_frequencies[valid_masks]) / total_positions
 
     if reduction == 'mean':
         output_loss = total_ILD_metric / batch_size
@@ -232,7 +236,7 @@ def sd_ild_loss(config: Config, generated, target, masks, sd_mean, sd_std, ild_m
 
     # calculate SD and ILD metrics
     sd_metric = spectral_distortion_metric(generated, target, masks, domain=config.domain)
-    ild_metric = ILD_metric(config.nbins_hrtf, generated, target, domain=config.domain)
+    ild_metric = ILD_metric(config.nbins_hrtf, generated, target, masks, domain=config.domain)
     # with open("log.txt", "a") as f:
     #     f.write(f"sd nan? {torch.isnan(sd_metric).any()}")
     #     f.write(f"ild nan? {torch.isnan(ild_metric).any()}")
