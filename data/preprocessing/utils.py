@@ -34,7 +34,7 @@ def get_train_data_statistics(config: Config, train_samples, mask):
                 sd_left = spectral_distortion_metric(left_hrtfs[cur], left_hrtfs[ref], mask)
                 running_sd += (sd_right + sd_left) / 2.
 
-                running_ild += ILD_metric(config.nbins_hrtf, train_samples[cur], train_samples[ref])
+                running_ild += ILD_metric(config.nbins_hrtf, train_samples[cur], train_samples[ref], mask)
         sd.append(running_sd / len(train_samples) - 1)
         ild.append(running_ild / len(train_samples) - 1)
     sd = torch.tensor(sd)
