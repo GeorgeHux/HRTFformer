@@ -137,7 +137,7 @@ def spectral_distortion_metric(generated, target, masks=None, reduction='mean', 
     # width = generated.size(3)
     # height = generated.size(4)
     if masks is None:
-        valid_mask = torch.ones_like(generated, dtype=torch.bool)
+        valid_mask = torch.ones_like(generated[:,0,...], dtype=torch.bool)
     else:
         valid_mask = ~masks.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
     total_positions = torch.sum(valid_mask[0])
@@ -199,7 +199,7 @@ def ILD_metric(nbins, generated, target, masks=None, reduction="mean", domain="m
     # height = generated.size(3)
     # width = generated.size(4)
     if masks is None:
-        valid_masks = torch.ones_like(generated, dtype=torch.bool)
+        valid_masks = torch.ones_like(generated[:,0,...], dtype=torch.bool)
     else:
         valid_masks = ~masks.permute(0, 3, 1, 2) # [B, W, H, R] -> [B, R, W, H]
     total_positions = torch.sum(valid_masks[0])
