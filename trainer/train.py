@@ -188,7 +188,7 @@ def train(config: Config, model, optimizer, train_prefetcher):
             if config.use_mse_loss:
                 loss = mse_loss_fn(recons, hrtf) * config.mse_scale
             else:
-                unweighted_content_loss = content_criterion(config, recons, masks, hrtf, sd_mean, sd_std, ild_mean, ild_std)
+                unweighted_content_loss = content_criterion(config, recons, hrtf, masks, sd_mean, sd_std, ild_mean, ild_std)
                 content_loss = config.content_weight * unweighted_content_loss
                 if config.apply_sht and config.use_cos_loss:
                     loss = content_loss + sh_coeff_cos_loss
