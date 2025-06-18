@@ -129,6 +129,10 @@ def get_sample_coords(num_initial_points, dataset):
         
         raise ValueError(f"dataset {dataset}, num_initial_points {num_initial_points} is not predefined!")
     elif dataset.lower() == "hutubs":
+        if num_initial_points == 9:
+            row_idx = [6, 36, 66] # -150, 0, 150
+            col_idx = [4, 9, 14] # [-50, 0, 50]
+            return [(i, j) for i in row_idx for j in col_idx]
         if num_initial_points == 3:
             return [[24, 4], [36, 9], [48, 4]]
         raise ValueError(f"dataset {dataset}, num_initial_points {num_initial_points} is not predefined!")
