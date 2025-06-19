@@ -39,6 +39,7 @@ def replace_nodes(config: Config, sr_dir, file_name):
 def run_lsd_evaluation(config: Config, sr_dir, file_ext=None, hrtf_selection=None):
     file_ext = 'lsd_errors.pickle' if file_ext is None else file_ext
     _, _, _, mask = get_dataset_info(config)
+    mask = mask.unsqueeze(0) # additional dimension for batch size
     if hrtf_selection == 'minimum' or hrtf_selection == 'maximum':
         lsd_errors = []
         valid_data_paths = glob.glob('%s/%s_*' % (config.valid_target_path, config.dataset))
