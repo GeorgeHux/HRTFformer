@@ -14,9 +14,8 @@ class ResBlock(nn.Module):
             nn.Conv1d(out_channels, out_channels * self.expansion, kernel_size=3, padding=1),
             nn.BatchNorm1d(out_channels * self.expansion)
         )
-        self.relu = nn.ReLU()
         self.prelu = nn.PReLU()
-        self.leakyRelu = nn.LeakyReLU(0.2)
+        # self.leakyRelu = nn.LeakyReLU(0.2)
         self.identity_downsample = identity_downsample
         self.stride = stride
 

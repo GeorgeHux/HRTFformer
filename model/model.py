@@ -9,20 +9,30 @@ from .DBPN import IterativeBlock, D_DBPN
 from .common import Reshape, Trim, initial_size_to_strides_map
 
 class DownsampleLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, padding=1):
+    def __init__(self, in_channels, out_channels, stride=2, padding=1):
         super(DownsampleLayer, self).__init__()
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
+        downsample = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride),
+                nn.BatchNorm1d(out_channels)
+            )
+        self.res_layers = nn.Sequential(
+            ResBlock(in_channels, out_channels, stride, identity_downsample=downsample),
+            ResBlock(out_channels, out_channels)
+        )
+
+        # self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)
         # self.gelu = nn.GELU()
-        self.act = nn.PReLU()
+        # self.act = nn.PReLU()
         # self.norm = nn.LayerNorm(out_channels)
         # self.norm = nn.BatchNorm1d(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
-        x = self.conv(x)
-        x = self.act(x)
+        # x = self.conv(x)
+        # x = self.act(x)
         # x = self.norm(x)
+        x = self.res_layers(x)
         x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
         # x = self.gelu(x)
         
@@ -38,9 +48,8 @@ class Encoder(nn.Module):
         self.strides = initial_size_to_strides_map[initial_size]
         in_channels = model_config.nbins
         # each layer of Encoder model is constructed by a transformer layer followed by a downsampling layer
-        # except the last layer, which is only a transformer layer without downsampling
-        # for example, if total number encoding layer is 5, the structure is as:
-        # [Transofrmer, downsampling, transformer, downsampling, transformer, downsampling, transformer]
+        # for example, if total number encoding layer is 3, the structure is as:
+        # [Transofrmer, downsampling, transformer, downsampling, transformer, downsampling]
         # strides only indicate the stride used in each downsampling layer
         # therefore the total number of encoding layer is len(strides) + 1
         num_encoding_layer = len(self.strides)
@@ -62,13 +71,6 @@ class Encoder(nn.Module):
             self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
                                                stride=self.strides[i])) # downsamply by 2 if stride=2
             in_channels = out_channels
-
-            # no downsampling for last layer
-            # if i < num_encoding_layer - 1:
-            #     out_channels = min(in_channels * 2, 2048)
-            #     self.layers.append(DownsampleLayer(in_channels=in_channels, out_channels=out_channels,
-            #                                        stride=self.strides[i])) # downsamply by 2 if stride=2
-            #     in_channels = out_channels
         
         output_size = self._get_output_dim(initial_size)
         self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
