@@ -4,7 +4,7 @@ from configs.model_config import ModelConfig
 from .common import initial_size_to_strides_map
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1) -> None:
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),

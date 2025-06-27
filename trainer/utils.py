@@ -15,6 +15,7 @@ from model.model import HRTF_Transformer, AutoEncoder, Encoder, Decoder
 from model.res_encoder import ResEncoder
 from model.DBPN import D_DBPN
 from model.vgg import VGGNet
+from model.unet import Unet
 from data.utils import get_hrtf_loader_function
 from data.hartufo import HrirSpec
 import importlib
