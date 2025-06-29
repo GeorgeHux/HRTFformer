@@ -34,7 +34,7 @@ class Unet(nn.Module):
             self.layers.append(TransConvBlock(in_channels, channels))
             in_channels = channels
 
-        self.layers.append(Trim(model_config.target_size, dim=1))
+        self.layers.append(Trim(model_config.target_size))
         self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
     
     def forward(self, x):
