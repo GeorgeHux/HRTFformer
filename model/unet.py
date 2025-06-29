@@ -41,6 +41,5 @@ class Unet(nn.Module):
         x = self.fc(x)
         for layer in self.layers:
             x = layer(x)
-        x = x.permute(0, 2, 1)
         x = self.out_conv(x)
         return x
