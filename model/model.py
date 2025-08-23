@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 from .transformer import Encoder as TransformerLayer
+from .transformer import TransConvBlock
 from configs.model_config import ModelConfig
 from .attention import ChannelAttention
 from .res_encoder import ResBlock, ResEncoder
@@ -184,6 +185,46 @@ class Decoder(nn.Module):
             x = layer(x)
         x = x.permute(0, 2, 1)
         x = self.out_conv(x)
+        return x
+
+class TransConvDecoder(nn.Module):
+    def __init__(self, model_config: ModelConfig) -> None:
+        super().__init__()
+        in_channels = 512
+        initial_size = model_config.initial_size
+        self.fc = nn.Sequential(
+            nn.Linear(model_config.latent_dim, initial_size*in_channels),
+            nn.BatchNorm1d(initial_size * in_channels),
+            nn.PReLU(),
+            Reshape(-1, initial_size, in_channels)
+        )
+
+        self.layers = nn.ModuleList()
+        if model_config.apply_sht:
+            num_layers = 5
+        else:
+            num_layers = 6
+
+        for _ in range(num_layers):
+            self.layers.append(TransConvBlock(
+                emb_size=in_channels,
+                hidden_size=model_config.hidden_size,
+                num_heads=model_config.num_heads,
+                num_groups=model_config.num_groups,
+                norm_type=model_config.norm_type,
+                activation=model_config.activation,
+                dropout=model_config.dropout,
+                target_size=model_config.target_size
+            ))
+        
+        self.layers.append(Trim(model_config.target_size, dim=1))
+        self.out_conv = nn.Conv1d(in_channels, model_config.nbins, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.fc(x)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.out_conv(x.transpose(1,2))
         return x
 
 class HRTF_Transformer(nn.Module):

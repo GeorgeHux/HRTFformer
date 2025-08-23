@@ -50,6 +50,16 @@ class TokenScaling(nn.Module):
         scale = torch.sqrt((x.pow(2).mean(dim=-1, keepdim=True) + self.eps))
         return x / scale
 
+def get_normalization(norm_type, emb_size):
+    if norm_type == "rms_norm":
+        return RMSNorm(emb_size)
+    elif norm_type == "layer_norm":
+        return nn.LayerNorm(emb_size)
+    elif norm_type == "token_scale":
+        return TokenScaling()
+    else:
+        return CustomizedNormalization(norm_type, emb_size)
+
 if __name__ == "__main__":
     x = torch.randn(1, 138, 128)
     norm = RMSNorm(128)

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from data.dataset import CUDAPrefetcher, CPUPrefetcher, MergeHRTFDataset
 from configs.config import Config
 from configs.model_config import ModelConfig
-from model.model import HRTF_Transformer, AutoEncoder, Encoder, Decoder
+from model.model import HRTF_Transformer, AutoEncoder, Encoder, Decoder, TransConvDecoder
 from model.res_encoder import ResEncoder
 from model.DBPN import D_DBPN
 from model.vgg import VGGNet
@@ -400,7 +400,8 @@ def get_model(config: Config):
     # model = ResEncTranDec(encoder_config, decoder_config).to(device)
     # model = AutoEncoder(ResEncoder, encoder_config, Decoder, decoder_config).to(device)
     # model = AutoEncoder(Encoder, encoder_config, D_DBPN, decoder_config).to(device)
-    model = AutoEncoder(Encoder, encoder_config, Decoder, decoder_config).to(device)
+    # model = AutoEncoder(Encoder, encoder_config, Decoder, decoder_config).to(device)
+    model = AutoEncoder(Encoder, encoder_config, TransConvDecoder, decoder_config).to(device)
 
     return model
 

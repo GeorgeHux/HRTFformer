@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 from .attention import GroupedQueryAttention
-from .normalization import RMSNorm, CustomizedNormalization, TokenScaling
+from .normalization import RMSNorm, CustomizedNormalization, TokenScaling, get_normalization
 
 class TransformerBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
@@ -178,6 +178,34 @@ class Transformer(nn.Module):
         enc_lr = self.encoder(lr_sample, mask=None)
         out = self.decoder(hr_sample, enc_lr, lr_mask=None, hr_mask=hr_mask)
         return out
+
+class TransConvBlock(nn.Module):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
+        super(TransConvBlock, self).__init__()
+
+        self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
+        self.norm1 = get_normalization(norm_type, emb_size)
+        # self.norm2 = get_normalization(norm_type, emb_size)
+
+        self.conv = nn.Sequential(
+            nn.Conv1d(emb_size, emb_size // 2, 1, 1),
+            nn.BatchNorm1d(emb_size // 2),
+            nn.PReLU(),
+            nn.ConvTranspose1d(emb_size // 2, emb_size // 2, 4, 2, 1),
+            nn.BatchNorm1d(emb_size // 2),
+            nn.PReLU(),
+            nn.Conv1d(emb_size // 2 , emb_size, 1, 1)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        attention = self.attention(x, x, x, None)
+
+        x = self.norm1(x + self.dropout(attention))
+        x = x.transpose(1, 2)
+        x_up = self.conv(x)
+        return x_up.transpose(1, 2)
 
 if __name__ == "__main__":
     batch_size = 2
