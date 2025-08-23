@@ -179,6 +179,24 @@ class Transformer(nn.Module):
         out = self.decoder(hr_sample, enc_lr, lr_mask=None, hr_mask=hr_mask)
         return out
 
+class PixelShuffled1d(nn.Module):
+    def __init__(self, upscale_factor):
+        super().__init__()
+        self.upscale_factor = upscale_factor
+
+    def forward(self, x):
+        """
+        x: [batch, channels, length]
+        """
+        b, c, l = x.size()
+        r = self.upscale_factor
+        assert c % r == 0, f"channels ({c}) not divisible by upscale_factor ({r})"
+
+        x = x.view(b, c // r, r, l)
+        x = x.permute(0, 1, 3, 2).contiguous()
+        x = x.view(b, c // r, l * r)
+        return x
+
 class TransConvBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
         super(TransConvBlock, self).__init__()
@@ -187,14 +205,25 @@ class TransConvBlock(nn.Module):
         self.norm1 = get_normalization(norm_type, emb_size)
         # self.norm2 = get_normalization(norm_type, emb_size)
 
+        # self.conv = nn.Sequential(
+        #     nn.Conv1d(emb_size, emb_size // 2, 1, 1),
+        #     nn.BatchNorm1d(emb_size // 2),
+        #     nn.PReLU(),
+        #     nn.ConvTranspose1d(emb_size // 2, emb_size // 2, 4, 2, 1),
+        #     nn.BatchNorm1d(emb_size // 2),
+        #     nn.PReLU(),
+        #     nn.Conv1d(emb_size // 2 , emb_size, 1, 1)
+        # )
+        upscale_factor = 2
         self.conv = nn.Sequential(
             nn.Conv1d(emb_size, emb_size // 2, 1, 1),
             nn.BatchNorm1d(emb_size // 2),
             nn.PReLU(),
-            nn.ConvTranspose1d(emb_size // 2, emb_size // 2, 4, 2, 1),
-            nn.BatchNorm1d(emb_size // 2),
+            nn.Conv1d(emb_size // 2, emb_size // 2 * upscale_factor, 3, 1, 1),
+            nn.BatchNorm1d(emb_size // 2 * upscale_factor),
             nn.PReLU(),
-            nn.Conv1d(emb_size // 2 , emb_size, 1, 1)
+            PixelShuffled1d(upscale_factor),
+            nn.Conv1d(emb_size // 2, emb_size, 1, 1)
         )
 
         self.dropout = nn.Dropout(dropout)
