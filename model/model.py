@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import math
 from .transformer import Encoder as TransformerLayer
-from .transformer import TransConvBlock
+from .transformer import TransConvEncoder, TransDeconvBlock
 from configs.model_config import ModelConfig
 from .attention import ChannelAttention
 from .res_encoder import ResBlock, ResEncoder
@@ -13,7 +13,7 @@ class DownsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, stride=2, padding=1):
         super(DownsampleLayer, self).__init__()
         downsample = nn.Sequential(
-                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride),
+                nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding),
                 nn.BatchNorm1d(out_channels)
             )
         self.res_layers = nn.Sequential(
@@ -56,15 +56,27 @@ class Encoder(nn.Module):
         num_encoding_layer = len(self.strides)
         self.layers = nn.ModuleList()
         for i in range(num_encoding_layer):
-            self.layers.append(TransformerLayer(emb_size=in_channels,
-                                                hidden_size=model_config.hidden_size,
-                                                num_layers=model_config.num_transformer_layers,
-                                                num_heads=model_config.num_heads,
-                                                num_groups=model_config.num_groups,
-                                                norm_type=model_config.norm_type,
-                                                activation=model_config.activation,
-                                                dropout=model_config.dropout,
-                                                target_size=model_config.target_size))
+            # self.layers.append(TransformerLayer(emb_size=in_channels,
+            #                                     hidden_size=model_config.hidden_size,
+            #                                     num_layers=model_config.num_transformer_layers,
+            #                                     num_heads=model_config.num_heads,
+            #                                     num_groups=model_config.num_groups,
+            #                                     norm_type=model_config.norm_type,
+            #                                     activation=model_config.activation,
+            #                                     dropout=model_config.dropout,
+            #                                     target_size=model_config.target_size))
+            
+            self.layers.append(TransConvEncoder(
+                emb_size=in_channels,
+                hidden_size=model_config.hidden_size,
+                num_layers=model_config.num_transformer_layers,
+                num_heads=model_config.num_heads,
+                num_groups=model_config.num_groups,
+                norm_type=model_config.norm_type,
+                activation=model_config.activation,
+                dropout=model_config.dropout,
+                target_size=model_config.target_size
+            ))
             
             # Add channel attention after transformer
             # self.layers.append(ChannelAttention(channels=in_channels))
@@ -73,8 +85,9 @@ class Encoder(nn.Module):
                                                stride=self.strides[i])) # downsamply by 2 if stride=2
             in_channels = out_channels
         
-        output_size = self._get_output_dim(initial_size)
-        self.fc = nn.Sequential(nn.Linear(output_size * in_channels, 1024),
+        # output_size = self._get_output_dim(initial_size)
+        self.pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Sequential(nn.Linear(in_channels, 1024),
                                 nn.BatchNorm1d(1024),
                                 nn.PReLU(),
                                 # nn.GELU(),
@@ -92,10 +105,11 @@ class Encoder(nn.Module):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-        # x = x.permute(0, 2, 1)
-        # x = self.latent_conv(x)
-        # x = x.view(x.shape[0], -1)
-        x = x.reshape(x.shape[0], -1)
+        x = x.permute(0, 2, 1)
+        # print(x.shape)
+        x = self.pool(x).squeeze(-1)
+        # print(x.shape)
+        # x = x.reshape(x.shape[0], -1)
         x = self.fc(x)
         return x
 
@@ -206,7 +220,7 @@ class TransConvDecoder(nn.Module):
             num_layers = 6
 
         for _ in range(num_layers):
-            self.layers.append(TransConvBlock(
+            self.layers.append(TransDeconvBlock(
                 emb_size=in_channels,
                 hidden_size=model_config.hidden_size,
                 num_heads=model_config.num_heads,

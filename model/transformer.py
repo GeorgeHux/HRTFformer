@@ -199,9 +199,73 @@ class PixelShuffled1d(nn.Module):
         x = x.view(b, c // r, l * r)
         return x
 
+
+class ConvFFN(nn.Module):
+    def __init__(self, hidden_size, kernel_size=3):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv1d(hidden_size, hidden_size * 4, kernel_size=kernel_size, padding=1),
+            nn.PReLU(),
+            nn.Conv1d(hidden_size * 4, hidden_size, kernel_size=1),
+            nn.BatchNorm1d(hidden_size),
+            nn.PReLU(),
+        )
+        self.linear = nn.Linear(hidden_size, hidden_size)
+    
+    def forward(self, x):
+        x = x.transpose(1, 2)
+        x = self.conv(x)
+        x = x.transpose(1, 2)
+        x = self.linear(x)
+        return x
+
+
 class TransConvBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
-        super(TransConvBlock, self).__init__()
+        super().__init__()
+        self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
+        self.norm1 = get_normalization(norm_type, emb_size)
+
+        self.conv_linear = ConvFFN(emb_size)
+        self.norm2 = get_normalization(norm_type, emb_size)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, query, key, value, mask):
+        attention = self.attention(query, key, value, mask)
+        x = self.norm1(query + self.dropout(attention))
+        conv_linear_out = self.conv_linear(x)
+        out = self.norm2(x + self.dropout(conv_linear_out))
+        return out
+
+
+class TransConvEncoder(nn.Module):
+    def __init__(self, emb_size, hidden_size, num_layers, num_heads, num_groups, norm_type, activation, dropout, target_size) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList(
+            [
+                TransConvBlock(
+                    emb_size,
+                    hidden_size,
+                    num_heads,
+                    num_groups,
+                    norm_type,
+                    activation,
+                    dropout,
+                    target_size
+                )
+                for _ in range(num_layers)
+            ]
+        )
+    
+    def forward(self, x, mask=None):
+        for layer in self.layers:
+            x = layer(x, x, x, mask)
+        return x
+
+class TransDeconvBlock(nn.Module):
+    def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
+        super().__init__()
 
         self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
 
