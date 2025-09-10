@@ -206,7 +206,7 @@ class ConvFFN(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv1d(hidden_size, hidden_size * 4, kernel_size=kernel_size, padding=1),
             nn.PReLU(),
-            nn.Conv1d(hidden_size * 4, hidden_size, kernel_size=1),
+            nn.Conv1d(hidden_size * 4, hidden_size, kernel_size=kernel_size, padding=1, groups=hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.PReLU(),
         )
