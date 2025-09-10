@@ -210,13 +210,13 @@ class ConvFFN(nn.Module):
             nn.BatchNorm1d(hidden_size),
             nn.PReLU(),
         )
-        self.linear = nn.Linear(hidden_size, hidden_size)
+        # self.linear = nn.Linear(hidden_size, hidden_size)
     
     def forward(self, x):
         x = x.transpose(1, 2)
         x = self.conv(x)
         x = x.transpose(1, 2)
-        x = self.linear(x)
+        # x = self.linear(x)
         return x
 
 
