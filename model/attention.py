@@ -102,6 +102,8 @@ class GroupedQuerryAttentionUpsample(nn.Module):
         self.key_proj = nn.Linear(emb_size, self.head_dim * num_groups, bias=False)
         self.value_proj = nn.Linear(emb_size, self.head_dim * num_groups, bias=False)
 
+        self.upsample_conv = nn.ConvTranspose1d(emb_size, emb_size, kernel_size=4, stride=2, padding=1)
+
         self.use_rope = use_rope
         if self.use_rope:
             # rotary position embedding
@@ -126,8 +128,11 @@ class GroupedQuerryAttentionUpsample(nn.Module):
                     nn.init.zeros_(m.bias)
     
     def forward(self, query, key, value, mask=None):
-        upsampled_size = min(query.shape[1] * 2, self.target_size)
-        query = F.interpolate(query.transpose(1, 2), size=upsampled_size, mode="linear", align_corners=False).transpose(1, 2)
+        # upsampled_size = min(query.shape[1] * 2, self.target_size)
+        # query = F.interpolate(query.transpose(1, 2), size=upsampled_size, mode="linear", align_corners=False).transpose(1, 2)
+        query = query.transpose(1, 2)
+        query = self.upsample_conv(query)[...,:self.target_size]
+        query = query.transpose(1, 2)
         b, q_len = query.shape[:2]
         k_len = key.shape[1]
         
