@@ -267,7 +267,6 @@ class TransDeconvBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
         super().__init__()
 
-        self.target_size = target_size
         self.attention = GroupedQueryAttention(emb_size, hidden_size, num_heads, num_groups, dropout, target_size)
 
         # -----------------GroupedQuerryAttentionUpsample--------------------
@@ -278,18 +277,15 @@ class TransDeconvBlock(nn.Module):
         self.norm1 = get_normalization(norm_type, emb_size)
         # self.norm2 = get_normalization(norm_type, emb_size)
 
-        self.upsample = nn.ConvTranspose1d(emb_size, emb_size, kernel_size=4, stride=2, padding=1)
+        # self.target_size = target_size
+        # self.upsample = nn.ConvTranspose1d(emb_size, emb_size, kernel_size=4, stride=2, padding=1)
 
-        self.conv = nn.Sequential(
-            nn.Conv1d(emb_size, emb_size * 4, 1, 1),
-            nn.BatchNorm1d(emb_size * 4),
-            nn.PReLU(),
-            # nn.ConvTranspose1d(emb_size // 2, emb_size // 2, 4, 2, 1),
-            nn.Conv1d(emb_size * 4, emb_size, 3, 1, 1),
-            # nn.BatchNorm1d(emb_size // 2),
-            # nn.PReLU(),
-            # nn.Conv1d(emb_size // 2 , emb_size, 1, 1)
-        )
+        # self.conv = nn.Sequential(
+        #     nn.Conv1d(emb_size, emb_size * 4, 1, 1),
+        #     nn.BatchNorm1d(emb_size * 4),
+        #     nn.PReLU(),
+        #     nn.Conv1d(emb_size * 4, emb_size, 3, 1, 1),
+        # )
 
         # upscale_factor = 2
         # self.conv = nn.Sequential(
@@ -304,23 +300,23 @@ class TransDeconvBlock(nn.Module):
         # )
 
         # self.conv = UpBlock(emb_size, 4, 2, 1, norm='batch')
-        # self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', num_stages=8)
+        self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', num_stages=8)
 
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x_up = self.upsample(x.transpose(1, 2))[...,:self.target_size].transpose(1, 2)
-        attention = self.attention(x_up, x, x, None)
+        # x_up = self.upsample(x.transpose(1, 2))[...,:self.target_size].transpose(1, 2)
+        attention = self.attention(x, x, x, None)
         # if x.shape[1] != attention.shape[1]:
         #     x_up = F.interpolate(x.transpose(1, 2), size=attention.shape[1], mode='linear', align_corners=False).transpose(1, 2)
         #     x_up = self.res_proj(x_up)
         # else:
         #     x_up = x
 
-        x = self.norm1(x_up + self.dropout(attention))
+        x = self.norm1(x + self.dropout(attention))
         x = x.transpose(1, 2)
-        conv_out = self.conv(x)
-        x = x + self.dropout(conv_out)
+        x = self.conv(x)
+        # x = x + self.dropout(conv_out)
         return x.transpose(1, 2)
 
 if __name__ == "__main__":

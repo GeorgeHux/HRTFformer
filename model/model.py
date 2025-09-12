@@ -12,30 +12,27 @@ from .common import Reshape, Trim, initial_size_to_strides_map
 class DownsampleLayer(nn.Module):
     def __init__(self, in_channels, out_channels, stride=2, padding=1):
         super(DownsampleLayer, self).__init__()
-        downsample = nn.Sequential(
-                nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding),
-                nn.BatchNorm1d(out_channels)
-            )
-        self.res_layers = nn.Sequential(
-            ResBlock(in_channels, out_channels, stride, identity_downsample=downsample),
-            ResBlock(out_channels, out_channels)
-        )
+        # downsample = nn.Sequential(
+        #         nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding),
+        #         nn.BatchNorm1d(out_channels)
+        #     )
+        # self.res_layers = nn.Sequential(
+        #     ResBlock(in_channels, out_channels, stride, identity_downsample=downsample),
+        #     ResBlock(out_channels, out_channels)
+        # )
 
-        # self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)
-        # self.gelu = nn.GELU()
-        # self.act = nn.PReLU()
-        # self.norm = nn.LayerNorm(out_channels)
-        # self.norm = nn.BatchNorm1d(out_channels)
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)
+        self.act = nn.GELU()
+        self.norm = nn.BatchNorm1d(out_channels)
 
     def forward(self, x):
         # input shape: [batch_size, num_elements (coefficients or raw hrtf points), channels]
         x = x.permute(0, 2, 1) # adjust to [batch_size, channels, num_elements]
-        # x = self.conv(x)
-        # x = self.act(x)
-        # x = self.norm(x)
-        x = self.res_layers(x)
+        x = self.conv(x)
+        x = self.act(x)
+        x = self.norm(x)
+        # x = self.res_layers(x)
         x = x.permute(0, 2, 1) # adjust back to [batch_size, num_elements, channels]
-        # x = self.gelu(x)
         
         return x
 
