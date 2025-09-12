@@ -53,27 +53,27 @@ class Encoder(nn.Module):
         num_encoding_layer = len(self.strides)
         self.layers = nn.ModuleList()
         for i in range(num_encoding_layer):
-            # self.layers.append(TransformerLayer(emb_size=in_channels,
-            #                                     hidden_size=model_config.hidden_size,
-            #                                     num_layers=model_config.num_transformer_layers,
-            #                                     num_heads=model_config.num_heads,
-            #                                     num_groups=model_config.num_groups,
-            #                                     norm_type=model_config.norm_type,
-            #                                     activation=model_config.activation,
-            #                                     dropout=model_config.dropout,
-            #                                     target_size=model_config.target_size))
+            self.layers.append(TransformerLayer(emb_size=in_channels,
+                                                hidden_size=model_config.hidden_size,
+                                                num_layers=model_config.num_transformer_layers,
+                                                num_heads=model_config.num_heads,
+                                                num_groups=model_config.num_groups,
+                                                norm_type=model_config.norm_type,
+                                                activation=model_config.activation,
+                                                dropout=model_config.dropout,
+                                                target_size=model_config.target_size))
             
-            self.layers.append(TransConvEncoder(
-                emb_size=in_channels,
-                hidden_size=model_config.hidden_size,
-                num_layers=model_config.num_transformer_layers,
-                num_heads=model_config.num_heads,
-                num_groups=model_config.num_groups,
-                norm_type=model_config.norm_type,
-                activation=model_config.activation,
-                dropout=model_config.dropout,
-                target_size=model_config.target_size
-            ))
+            # self.layers.append(TransConvEncoder(
+            #     emb_size=in_channels,
+            #     hidden_size=model_config.hidden_size,
+            #     num_layers=model_config.num_transformer_layers,
+            #     num_heads=model_config.num_heads,
+            #     num_groups=model_config.num_groups,
+            #     norm_type=model_config.norm_type,
+            #     activation=model_config.activation,
+            #     dropout=model_config.dropout,
+            #     target_size=model_config.target_size
+            # ))
             
             # Add channel attention after transformer
             # self.layers.append(ChannelAttention(channels=in_channels))
