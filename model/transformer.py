@@ -300,7 +300,7 @@ class TransDeconvBlock(nn.Module):
         # )
 
         # self.conv = UpBlock(emb_size, 4, 2, 1, norm='batch')
-        self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc', num_stages=10)
+        self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation=activation, input_shape_layout='bsc', num_stages=5)
         # self.conv = UpDownUp(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc')
 
         self.dropout = nn.Dropout(dropout)
