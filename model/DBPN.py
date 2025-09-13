@@ -128,7 +128,7 @@ class D_UpBlock(nn.Module):
 class IterativeBlock(nn.Module):
     def __init__(self, channels, out_channels, kernel, stride, padding, activation='gelu', input_shape_layout='bcs', num_stages=5):
         super(IterativeBlock, self).__init__()
-        bias = False
+        bias = True
         norm = "batch"
         self.input_shape_layout = input_shape_layout
         self.num_stages = num_stages
@@ -224,4 +224,31 @@ class D_DBPN(nn.Module):
         x = self.up6(x)
         x = self.out_conv(x)
         out = self.trim(x)
+        return out
+
+
+class UpDownUp(nn.Module):
+    def __init__(self, channels, out_channels, kernel, stride, padding, activation='gelu', input_shape_layout='bcs') -> None:
+        super().__init__()
+        bias = False
+        norm = "batch"
+        self.input_shape_layout = input_shape_layout
+
+        self.up1 = UpBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
+        self.down1 = DownBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
+        self.up2 = UpBlock(channels, kernel, stride, padding, bias=bias, activation=activation, norm=norm)
+
+        self.out_conv = ConvBlock(2*channels, out_channels, 3, 1, 1, bias=bias, activation=activation, norm=norm)
+
+    def forward(self, x):
+        if self.input_shape_layout == 'bsc':
+            x = x.permute(0, 2, 1)
+        h1 = self.up1(x)
+        l1 = self.down1(h1)
+        h2 = self.up2(l1)
+        h = torch.cat((h1, h2), 1)
+        out = self.out_conv(h)
+        if self.input_shape_layout == 'bsc':
+            out = out.permute(0, 2, 1)
+
         return out

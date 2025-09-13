@@ -4,7 +4,7 @@ import torch.nn.init as init
 import torch.nn.functional as F
 from .attention import GroupedQueryAttention, GroupedQuerryAttentionUpsample
 from .normalization import RMSNorm, CustomizedNormalization, TokenScaling, get_normalization
-from .DBPN import UpBlock, IterativeBlock
+from .DBPN import UpBlock, IterativeBlock, UpDownUp
 
 class TransformerBlock(nn.Module):
     def __init__(self, emb_size, hidden_size, num_heads, num_groups, norm_type="batch", activation="prelu", dropout=0., target_size=484):
@@ -300,7 +300,8 @@ class TransDeconvBlock(nn.Module):
         # )
 
         # self.conv = UpBlock(emb_size, 4, 2, 1, norm='batch')
-        self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', num_stages=8)
+        # self.conv = IterativeBlock(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc', num_stages=8)
+        self.conv = UpDownUp(emb_size, emb_size, kernel=4, stride=2, padding=1, activation='prelu', input_shape_layout='bsc')
 
         self.dropout = nn.Dropout(dropout)
 
@@ -314,10 +315,9 @@ class TransDeconvBlock(nn.Module):
         #     x_up = x
 
         x = self.norm1(x + self.dropout(attention))
-        x = x.transpose(1, 2)
         x = self.conv(x)
         # x = x + self.dropout(conv_out)
-        return x.transpose(1, 2)
+        return x
 
 if __name__ == "__main__":
     batch_size = 2
