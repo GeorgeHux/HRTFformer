@@ -4,12 +4,12 @@ import importlib
 import pickle
 import numpy as np
 import torch
-from trainer.utils import spectral_distortion_inner_v1
+from trainer.utils import spectral_distortion_metric
 
 imp = importlib.import_module('data.hrtfdata.full')
 load_function = getattr(imp, 'SONICOM')
 
-config = Config(False, 'Sonicom')
+config = Config(True, 'Sonicom')
 data_dir = config.raw_hrtf_dir / config.dataset.upper()
 domain = config.domain
 id_file_dir = config.train_val_id_dir
@@ -19,26 +19,6 @@ with open(id_filename, "rb") as file:
 
 left_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'left', 'domain': domain}}, subject_ids=val_ids)
 right_val = load_function(data_dir, feature_spec={'hrirs': {'samplerate': config.hrir_samplerate, 'side': 'right', 'domain': domain}}, subject_ids=val_ids)
-
-total_num_samples = 0
-index = 0
-left = left_val[index]['features'][:, :, :, 1:]
-right = right_val[index]['features'][:, :, :, 1:]
-sample_id = left_val.subject_ids[index]
-merge = np.ma.concatenate([left, right], axis=3)
-original_mask = np.all(np.ma.getmaskarray(left), axis=3)
-
-degree = 1
-hr_SHT = SphericalHarmonicsTransform(degree,
-                                    left_val.row_angles,
-                                    left_val.column_angles,
-                                    left_val.radii,
-                                    original_mask)
-coefficient = hr_SHT(merge).T
-inversed_hrtf = torch.from_numpy(hr_SHT.inverse(coefficient))
-
-merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1)
-print(merge.shape, inversed_hrtf.shape)
 
 eval_resutls = {10: 4.9959,
 100: 4.6378,
@@ -81,4 +61,32 @@ eval_resutls = {10: 4.9959,
 83: 4.5802,
 88: 4.7158,
 89: 5.4505}
+lsd_loss_percentage_list = []
 
+for val_id in val_ids:
+    left = left_val[val_id]['features'][:, :, :, 1:]
+    right = right_val[val_id]['features'][:, :, :, 1:]
+    sample_id = left_val.subject_ids[val_id]
+    merge = np.ma.concatenate([left, right], axis=3)
+    original_mask = np.all(np.ma.getmaskarray(left), axis=3)
+
+    degree = 1
+    hr_SHT = SphericalHarmonicsTransform(degree,
+                                        left_val.row_angles,
+                                        left_val.column_angles,
+                                        left_val.radii,
+                                        original_mask)
+    coefficient = hr_SHT(merge)
+    inversed_hrtf = torch.from_numpy(hr_SHT.inverse(coefficient).T).view(256, 1, 72, 12).unsqueeze(0)
+
+    merge = torch.from_numpy(merge.data).permute(3, 2, 0, 1).unsqueeze(0) # b x nbins x r x w x h
+    print(merge.shape, inversed_hrtf.shape)
+    mask = torch.all(torch.from_numpy(left_val[0]['features'].mask), axis=3)
+    sh_only_lsd = spectral_distortion_metric(inversed_hrtf, merge, domain=domain).item()
+    model_output_lsd = eval_resutls[sample_id]
+    loss_percentage = sh_only_lsd / model_output_lsd
+    print(f"sh_only_lsd: {sh_only_lsd} model lsd: {model_output_lsd} percentage: {loss_percentage}")
+    lsd_loss_percentage_list.append(loss_percentage)
+
+print("=" * 20)
+print(f"average loss percentage: {np.mean(lsd_loss_percentage_list)}")
