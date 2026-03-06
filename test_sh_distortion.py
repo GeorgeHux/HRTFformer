@@ -63,10 +63,10 @@ eval_resutls = {10: 4.9959,
 89: 5.4505}
 lsd_loss_percentage_list = []
 
-for val_id in val_ids:
-    left = left_val[val_id]['features'][:, :, :, 1:]
-    right = right_val[val_id]['features'][:, :, :, 1:]
-    sample_id = left_val.subject_ids[val_id]
+for id in range(len(val_ids)):
+    left = left_val[id]['features'][:, :, :, 1:]
+    right = right_val[id]['features'][:, :, :, 1:]
+    sample_id = left_val.subject_ids[id]
     merge = np.ma.concatenate([left, right], axis=3)
     original_mask = np.all(np.ma.getmaskarray(left), axis=3)
 
