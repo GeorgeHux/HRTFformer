@@ -161,12 +161,15 @@ for file in hrtf_file_names:
     subject_id = ''.join(re.findall(r'\d+', file))
     ild_diff = hf.calculate_ild_difference(target_hrtf, generated_hrtf)
     itd_diff = hf.calculate_itd_difference(target_hrtf, generated_hrtf)
-    model_ild_diff = ild_itd_results[sample_id]['ild']
-    model_itd_diff = ild_itd_results[sample_id]['itd']
+    model_ild_diff = ild_itd_results[subject_id]['ild']
+    model_itd_diff = ild_itd_results[subject_id]['itd']
     ild_percentage = ild_diff / model_ild_diff
     itd_percentage = itd_diff / model_itd_diff
     ild_percentage_list.append(ild_percentage)
     itd_percentage_list.append(itd_percentage)
     print('-' * 20)
-    print(f"id: {sample_id}, sh_only_ild: {ild_diff} model ild: {model_ild_diff} percentage: {ild_percentage}")
-    print(f"id: {sample_id}, sh_only_itd: {itd_diff} model ild: {model_itd_diff} percentage: {itd_percentage}")
+    print(f"id: {subject_id}, sh_only_ild: {ild_diff} model ild: {model_ild_diff} percentage: {ild_percentage}")
+    print(f"id: {subject_id}, sh_only_itd: {itd_diff} model ild: {model_itd_diff} percentage: {itd_percentage}")
+print("=" * 20)
+print(f"average ild_percentage: {np.mean(ild_percentage_list)}")
+print(f"average itd_percentage: {np.mean(itd_percentage_list)}")
