@@ -81,7 +81,7 @@ This study was made possible by support from [SONICOM](https://www.sonicom.eu/),
 
 ## Citation
 
-If you use this project, please cite:
+If you find this code useful for your research, please consider citing the following paper:
 
 ```bibtex
 @article{hu2025hrtfformer,
