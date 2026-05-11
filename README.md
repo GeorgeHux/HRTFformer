@@ -71,6 +71,14 @@ Training writes logs, plots, and checkpoints under the configured output paths. 
 
 Large datasets, generated checkpoints, reconstructed HRTFs, SOFA files, and pickle artifacts are intentionally ignored by Git. Keep those files outside the repository or regenerate them from the configured data paths.
 
+## Acknowledgements
+
+Parts of the code are borrowed from the following repositories:
+
+- [GEP-GAN](https://github.com/ahogg/HRTF-upsampling-with-a-generative-adversarial-network-using-a-gnomonic-equiangular-projection)
+
+This study was made possible by support from SONICOM (www.sonicom.eu), a project that has received funding from the European Union's Horizon 2020 research and innovation program under grant agreement No. 101017743.
+
 ## Citation
 
 If you use this project, please cite:
