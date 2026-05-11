@@ -1,4 +1,5 @@
-# HRTFformer
+# HRTFformer: A Spatially-Aware Transformer for Individual HRTF Upsampling in Immersive Audio Rendering
+
 
 ## Project Structure
 
