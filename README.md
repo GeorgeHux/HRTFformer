@@ -1,4 +1,6 @@
-# [HRTFformer: A Spatially-Aware Transformer for Individual HRTF Upsampling in Immersive Audio Rendering](https://arxiv.org/abs/2510.01891)
+# HRTFformer: A Spatially-Aware Transformer for Individual HRTF Upsampling in Immersive Audio Rendering
+
+[Arxiv](https://arxiv.org/abs/2510.01891)
 
 HRTFformer is a PyTorch project for HRTF super-resolution and reconstruction. The current training path builds an autoencoder-style model with a transformer encoder and a transposed-convolution decoder for reconstructing high-resolution HRTF representations from sparse measurements.
 
