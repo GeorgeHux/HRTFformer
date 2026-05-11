@@ -43,6 +43,8 @@ Optional evaluation scripts may also require MATLAB Engine for Python, AMT, and 
 
 Update paths and hyperparameters in `configs/config.py` before running. In particular, set the dataset directory, output directory, device, and HRTF loader for your machine.
 
+The SONICOM HRTF dataset can be downloaded from `https://transfer.ic.ac.uk:9090/#/2022_SONICOM-HRTF-DATASET/`.
+
 Preprocess data:
 
 ```bash
@@ -68,3 +70,16 @@ Training writes logs, plots, and checkpoints under the configured output paths. 
 ## Notes
 
 Large datasets, generated checkpoints, reconstructed HRTFs, SOFA files, and pickle artifacts are intentionally ignored by Git. Keep those files outside the repository or regenerate them from the configured data paths.
+
+## Citation
+
+If you use this project, please cite:
+
+```bibtex
+@article{hu2025hrtfformer,
+  title={HRTFformer: A Spatially-Aware Transformer for Personalized HRTF Upsampling in Immersive Audio Rendering},
+  author={Hu, Xuyi and Li, Jian and Zhang, Shaojie and Goetz, Stefan and Picinali, Lorenzo and Akan, Ozgur B and Hogg, Aidan OT},
+  journal={arXiv preprint arXiv:2510.01891},
+  year={2025}
+}
+```
