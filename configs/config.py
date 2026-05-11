@@ -68,7 +68,7 @@ class Config:
         # Training hyperparams
         self.batch_size = 8
         self.num_workers = 1
-        self.num_initial_points = 100
+        self.num_initial_points = 3
         self.optimizer = 'adam'
         self.num_epochs = 100  # was originally 250
         self.lr = 2e-4
