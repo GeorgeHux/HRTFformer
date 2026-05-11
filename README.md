@@ -1,5 +1,6 @@
-# HRTFformer: A Spatially-Aware Transformer for Individual HRTF Upsampling in Immersive Audio Rendering
+# [HRTFformer: A Spatially-Aware Transformer for Individual HRTF Upsampling in Immersive Audio Rendering](https://arxiv.org/abs/2510.01891)
 
+HRTFformer is a PyTorch project for HRTF super-resolution and reconstruction. The current training path builds an autoencoder-style model with a transformer encoder and a transposed-convolution decoder for reconstructing high-resolution HRTF representations from sparse measurements.
 
 ## Project Structure
 
@@ -42,7 +43,7 @@ Optional evaluation scripts may also require MATLAB Engine for Python, AMT, and 
 
 Update paths and hyperparameters in `configs/config.py` before running. In particular, set the dataset directory, output directory, device, and HRTF loader for your machine.
 
-The SONICOM HRTF dataset can be downloaded from `https://transfer.ic.ac.uk:9090/#/2022_SONICOM-HRTF-DATASET/`.
+The SONICOM HRTF dataset can be downloaded from [here](https://transfer.ic.ac.uk:9090/#/2022_SONICOM-HRTF-DATASET/).
 
 Preprocess data:
 
