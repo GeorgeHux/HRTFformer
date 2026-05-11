@@ -77,7 +77,7 @@ Parts of the code are borrowed from the following repositories:
 
 - [GEP-GAN](https://github.com/ahogg/HRTF-upsampling-with-a-generative-adversarial-network-using-a-gnomonic-equiangular-projection)
 
-This study was made possible by support from [SONICOM](www.sonicom.eu), a project that has received funding from the European Union's Horizon 2020 research and innovation program under grant agreement No. 101017743.
+This study was made possible by support from [SONICOM](https://www.sonicom.eu/), a project that has received funding from the European Union's Horizon 2020 research and innovation program under grant agreement No. 101017743.
 
 ## Citation
 
