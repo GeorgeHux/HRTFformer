@@ -2,6 +2,24 @@
 
 [Arxiv](https://arxiv.org/abs/2510.01891)
 
+## Environment Setup
+
+git clone HRTFformer.git
+cd HRTFformer
+
+conda create -n hrtfformer python=3.10 -y
+conda activate hrtfformer
+
+# PyTorch with CUDA 12.6 (+cu126 wheels are not on the default PyPI index)
+pip install torch==2.7.0+cu126 torchvision==0.22.0+cu126 torchaudio==2.7.0+cu126 --index-url https://download.pytorch.org/whl/cu126
+
+# Remaining dependencies
+pip install -r requirements.txt
+
+# Optional: MATLAB Engine for Python (only if you use MATLAB-based evaluation)
+# cd <MATLABROOT>/extern/engines/python
+# python -m pip install .
+
 ## Project Structure
 
 ```text
