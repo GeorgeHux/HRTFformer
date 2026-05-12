@@ -4,6 +4,7 @@
 
 ## Environment Setup
 
+```text
 git clone HRTFformer.git
 cd HRTFformer
 
@@ -17,6 +18,7 @@ pip install -r requirements.txt
 # Optional: MATLAB Engine for Python (only if you use MATLAB-based evaluation)
 # cd <MATLABROOT>/extern/engines/python
 # python -m pip install .
+```
 
 ## Project Structure
 
