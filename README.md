@@ -118,17 +118,4 @@ If you find this code useful for your research, please consider citing the follo
   organization={IEEE}
 }
 
-@inproceedings{hu2025head,
-  title={Head-related transfer function upsampling using an autoencoder-based generative adversarial network with evaluation framework},
-  author={Hu, Xuyi and Li, Jian and Picinali, Lorenzo and Hogg, Aidan OT},
-  year={2025},
-  organization={Audio Engineering Society}
-}
-
-@article{hu2024hrtf,
-  title={\textsc{HRTF} spatial upsampling in the spherical harmonics domain employing a generative adversarial network},
-  author={Hu, Xuyi and Li, Jian and Picinali, Lorenzo and Hogg, Aidan OT},
-  journal={International Conference on Digital Audio Effects (DAFx)},
-  year={2024}
-}
 ```
