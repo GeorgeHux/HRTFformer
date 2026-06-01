@@ -105,8 +105,8 @@ If you find this code useful for your research, please consider citing the follo
 @article{hu2025hrtfformer,
   title={HRTFformer: A Spatially-Aware Transformer for Personalized HRTF Upsampling in Immersive Audio Rendering},
   author={Hu, Xuyi and Li, Jian and Zhang, Shaojie and Goetz, Stefan and Picinali, Lorenzo and Akan, Ozgur B and Hogg, Aidan OT},
-  journal={arXiv preprint arXiv:2510.01891},
-  year={2025}
+  journal={IEEE Transactions on Multimedia},
+  year={2026}
 }
 
 @inproceedings{hu2025machine,
